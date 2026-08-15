@@ -274,7 +274,7 @@ test('apply injects the stylesheet exactly once and upgrades the viewport meta',
   assert.ok(content.startsWith('width=device-width'), 'existing viewport directives preserved')
 
   // Version marker: lets a user confirm which bundle is live.
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.17')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.18')
 
   // Second apply (HMR re-activation) must not duplicate the style tag.
   module.apply(ctx)
@@ -741,7 +741,7 @@ test('apply failures are contained (the entry never dies)', () => {
   assert.doesNotThrow(() => module.apply(makeCtx({ runtime: badRuntime }, { toggleSidebar() {} })))
   // The steps before the failure point still applied: css + version marker.
   assert.ok(dom.styleTags.some((t) => t.dataset.plugin === 'dsh-mobile-theme'), 'css injected before the failure')
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.17', 'version marker written')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.18', 'version marker written')
 })
 
 test('inside taps follow the navigation whitelist', async () => {
@@ -875,6 +875,23 @@ test('tap-to-reveal for message time labels (touch hover equivalent)', async () 
   }
   fireClick(actionBtn)
   assert.equal(item.getAttribute('data-dsh-mobile-times'), null, 'action-button taps do not reveal')
+
+  // User messages never get the reveal mark — their send time stays always
+  // visible, and the mark's max-width rule would clip it.
+  fireClick(item)
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), '1')
+  const userRow = {
+    tagName: 'DIV',
+    className: 'gdEzaW_userRow',
+    attrs: {},
+    setAttribute(k, v) { this.attrs[k] = v },
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null },
+    removeAttribute(k) { delete this.attrs[k] },
+    closest(sel) { return sel.includes('gdEzaW_userRow') ? this : null }
+  }
+  fireClick(userRow)
+  assert.equal(userRow.getAttribute('data-dsh-mobile-times'), null, 'user rows never get the reveal mark')
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), null, 'tapping a user row collapses other revealed items')
 
   // Auto-hide after 4s.
   fireClick(item)

@@ -397,6 +397,14 @@ window.__ModuleLoader__.load({
             }
             // Action buttons keep their own behavior.
             if (t.closest('.p-xYUq_actions') !== null) return
+            // User messages have nothing to reveal (their send time is
+            // always visible): never mark them — just collapse any other
+            // revealed row, so the mark can never clip the user time.
+            if (t.closest('.gdEzaW_userRow') !== null) {
+              hideAll()
+              clearTimer()
+              return
+            }
             var item = t.closest('.Md3f7G_flowItem')
             if (item === null) {
               hideAll()
