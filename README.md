@@ -69,6 +69,9 @@ Uninstall: `dsh plugin --profile web remove dsh-mobile-theme`, then restart. Rem
 
 The plugin is a pure client bundle plus a no-op node half, so it never changes what the model sees and cannot affect sessions or settings.
 
+
+A device-level regression checklist (`REGRESSION.md`) covers every feature for pre-publish / post-upgrade passes.
+
 ## Develop
 
 ```sh
