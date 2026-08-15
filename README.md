@@ -21,7 +21,7 @@ No React code, no host-plane services, no settings schema: the layout work is on
 | Column drag handles | visible | hidden (no col-resize on touch) |
 | Composer | 34px send button, 16px clearance | 40px touch targets, tighter clearance, single-line bottom bar (the left tools group shrinks flexibly, selects truncate — no scroll container, which would clip the permission popover; the send button keeps its place), `env(safe-area-inset-bottom)` padding so the input bar clears the home indicator |
 | Header/tabs | fixed 36px gaps | compact paddings, horizontally scrollable tab row |
-| Message actions | 28px | 32px touch targets; the time/stats labels stay visible on touch in a **compact truncated form** (30% width cap + ellipsis, single line) |
+| Message actions | 28px | 32px touch targets; the time/stats labels stay visible on touch in a **compact truncated form** (30% width cap + ellipsis, single line); the turn stats line (rounds / times) becomes **wrapped centered capsules** (mainstream community treatment — full information, no collision) |
 | Settings | centered 800px modal with side nav | full-screen sheet (`100dvh`) with a horizontally scrollable section nav |
 | `/` `@` trigger menu | anchored to the composer | viewport-bounded, 44px rows, `55dvh` max height above the keyboard |
 | Tool-call inspect button | hover-revealed (`opacity: 0`) | always visible on `hover: none` devices |

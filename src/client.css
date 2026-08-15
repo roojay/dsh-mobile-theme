@@ -211,6 +211,36 @@
     user-select: text;
   }
 
+  /* Turn stats line (rounds/steps/LLM time/tool time): the mainstream
+     community treatment — each stat becomes its own small capsule,
+     centered and allowed to wrap, so the full information stays visible
+     without colliding with the next message. Tokens only, no colors. */
+  .FJxK0a_root {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 6px;
+    padding: 4px 8px 2px;
+    overflow: visible;
+    line-height: 16px;
+  }
+
+  .FJxK0a_sep {
+    display: none;
+  }
+
+  .FJxK0a_root > span:not(.FJxK0a_sep) {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-tertiary);
+    font-size: 11px;
+    line-height: 16px;
+  }
+
   .bqrRRG_root {
     padding: 8px 12px 12px;
   }
