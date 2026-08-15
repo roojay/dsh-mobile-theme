@@ -1,0 +1,55 @@
+{
+  "name": "dsh-mobile-theme",
+  "version": "0.3.9",
+  "description": "Mobile-adaptation theme plugin for the DeepSeek Harness Web surface: phone layout (overlay sidebar/details drawers, touch-size controls, safe-area insets, fullscreen settings) plus an automatic viewport theme layer stacked through the official theme registry",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "scripts",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build-client.mjs",
+    "prepack": "npm run build",
+    "test": "npm run build && node --test test/*.test.js",
+    "deploy:hot": "npm run build && node scripts/deploy-hot.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "theme",
+    "mobile",
+    "responsive"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
+      "platform": "web"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+# dsh-mobile-theme bundle patch: one client roster row.
+#
+# The row's package declares `dsh.client` (platform: web), so the
+# client-modules node half scans it into window.__DSH_BOOT__ and serves
+# its `exports["./client"]` bundle to the browser. The node half of the
+# package is a no-op apply — the host Loader still gives this entry a
+# fiber, which the web plugin scan requires before it composes the row.
+#
+# No inject, no config: the browser half waits on the theme service
+# through its own exports.inject, and reads the layout service
+# opportunistically with ctx.get (the mobile drawer click-to-close is
+# an enhancement, never a hard dependency).
+- insert:
+    - id: mobile-theme
+      name: dsh-mobile-theme
