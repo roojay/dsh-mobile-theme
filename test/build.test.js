@@ -55,7 +55,7 @@ test('embedded stylesheet keeps the structural and pinned selectors', () => {
     '.nLMEza_bar',
     '.oY77xG_selector',
     '.QsffPG_menu',
-    '.p-xYUq_actions',
+    '.p-xYUq_timeStart',
     '.YDXeBa_sessionRow',
     '.YDXeBa_searchResultRow',
     '.hHd-Xa_newSession',
