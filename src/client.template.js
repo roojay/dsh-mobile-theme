@@ -370,6 +370,63 @@ window.__ModuleLoader__.load({
         }, PACKAGE + ': composer keyboard guard')
       }
 
+      // Tap-to-reveal for the message time/stats labels — the touch
+      // analogue of the official hover-reveal. A tap on a message toggles
+      // its labels for ~4s; tapping anywhere else hides them all. Taps on
+      // the action buttons themselves do not toggle (they are button
+      // actions, not message touches).
+      if (typeof document !== 'undefined') {
+        ctx.effect(function () {
+          var revealTimer = null
+          function clearTimer() {
+            if (revealTimer !== null) {
+              clearTimeout(revealTimer)
+              revealTimer = null
+            }
+          }
+          function hideAll(except) {
+            var items = document.querySelectorAll('[data-dsh-mobile-times="1"]')
+            for (var i = 0; i < items.length; i++) {
+              if (except === void 0 || items[i] !== except) items[i].removeAttribute('data-dsh-mobile-times')
+            }
+          }
+          function onTap(e) {
+            var t = e && e.target !== void 0 ? e.target : null
+            if (t === null || typeof t.closest !== 'function') {
+              hideAll()
+              clearTimer()
+              return
+            }
+            // Action buttons keep their own behavior.
+            if (t.closest('.p-xYUq_actions') !== null) return
+            var item = t.closest('.Md3f7G_flowItem')
+            if (item === null) {
+              hideAll()
+              clearTimer()
+              return
+            }
+            var wasShown = item.getAttribute('data-dsh-mobile-times') === '1'
+            hideAll(item)
+            clearTimer()
+            if (wasShown) {
+              item.removeAttribute('data-dsh-mobile-times')
+            } else {
+              item.setAttribute('data-dsh-mobile-times', '1')
+              revealTimer = setTimeout(function () {
+                item.removeAttribute('data-dsh-mobile-times')
+                revealTimer = null
+              }, 4000)
+            }
+          }
+          document.addEventListener('click', onTap, true)
+          return function () {
+            document.removeEventListener('click', onTap, true)
+            clearTimer()
+            hideAll()
+          }
+        }, PACKAGE + ': message time tap-reveal')
+      }
+
       // Drawer behavior + ☰ floating button (enhancement; layout is
       // optional). The button lives at body level — outside every React
       // container — so no reconciliation can wipe it. CSS shows it only

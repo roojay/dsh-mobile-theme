@@ -56,7 +56,7 @@ test('embedded stylesheet keeps the structural and pinned selectors', () => {
     '.oY77xG_selector',
     '.QsffPG_menu',
     '.p-xYUq_timeStart',
-    '.FJxK0a_root',
+    '[data-dsh-mobile-times=\\"1\\"] .p-xYUq_timeStart',
     '.YDXeBa_sessionRow',
     '.YDXeBa_searchResultRow',
     '.hHd-Xa_newSession',

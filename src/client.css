@@ -211,36 +211,6 @@
     user-select: text;
   }
 
-  /* Turn stats line (rounds/steps/LLM time/tool time): the mainstream
-     community treatment — each stat becomes its own small capsule,
-     centered and allowed to wrap, so the full information stays visible
-     without colliding with the next message. Tokens only, no colors. */
-  .FJxK0a_root {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 4px 6px;
-    padding: 4px 8px 2px;
-    overflow: visible;
-    line-height: 16px;
-  }
-
-  .FJxK0a_sep {
-    display: none;
-  }
-
-  .FJxK0a_root > span:not(.FJxK0a_sep) {
-    display: inline-flex;
-    align-items: center;
-    white-space: nowrap;
-    padding: 1px 8px;
-    border-radius: 999px;
-    background: var(--dsw-alias-interactive-bg-hover);
-    color: var(--dsw-alias-label-tertiary);
-    font-size: 11px;
-    line-height: 16px;
-  }
-
   .bqrRRG_root {
     padding: 8px 12px 12px;
   }
@@ -634,12 +604,19 @@
     opacity: 1;
   }
 
-  /* The message time/stats labels are hover-revealed on desktop; touch
-     has no hover, so they are shown permanently — but in a compact,
-     truncated form: capped width + ellipsis keeps the action row one
-     clean line instead of overflowing into the next message. */
+  /* The message time/stats labels are hover-revealed on desktop. Touch
+     has no hover, so the touch equivalent is a TAP: hidden by default,
+     shown while the message item carries the reveal mark (written by the
+     bundle for ~4s). Shown labels are capped + ellipsized — one line,
+     never overflowing into the next message. */
   .p-xYUq_timeStart,
   .p-xYUq_timeEnd {
+    display: none;
+  }
+
+  [data-dsh-mobile-times="1"] .p-xYUq_timeStart,
+  [data-dsh-mobile-times="1"] .p-xYUq_timeEnd {
+    display: inline-flex;
     min-width: 0;
     max-width: 30%;
     overflow: hidden;
@@ -649,11 +626,11 @@
     line-height: 20px;
   }
 
-  .p-xYUq_timeStart {
+  [data-dsh-mobile-times="1"] .p-xYUq_timeStart {
     padding-right: 6px;
   }
 
-  .p-xYUq_timeEnd {
+  [data-dsh-mobile-times="1"] .p-xYUq_timeEnd {
     padding-left: 6px;
   }
 }

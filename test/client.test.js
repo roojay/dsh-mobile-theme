@@ -49,6 +49,7 @@ function makeDom() {
   }
 
   const styleTags = []
+  const markedEls = []
   const scroller = { scrollHeight: 1000, scrollTop: 0 }
 
   function makeElement(tagName) {
@@ -104,13 +105,19 @@ function makeDom() {
       }
       return null
     },
+    querySelectorAll(selector) {
+      if (selector === '[data-dsh-mobile-times="1"]') {
+        return markedEls.filter((el) => typeof el.getAttribute === 'function' && el.getAttribute('data-dsh-mobile-times') === '1')
+      }
+      return []
+    },
     addEventListener(type, fn) { listeners.push({ type, fn }) },
     removeEventListener(type, fn) {
       const i = listeners.findIndex((l) => l.type === type && l.fn === fn)
       if (i >= 0) listeners.splice(i, 1)
     }
   }
-  return { document, frame, slot, col, centerCol, detailsCol, viewport, styleTags, listeners, body, rootStyle, scroller }
+  return { document, frame, slot, col, centerCol, detailsCol, viewport, styleTags, listeners, body, rootStyle, scroller, markedEls }
 }
 
 function makeMediaQuery(initial) {
@@ -267,7 +274,7 @@ test('apply injects the stylesheet exactly once and upgrades the viewport meta',
   assert.ok(content.startsWith('width=device-width'), 'existing viewport directives preserved')
 
   // Version marker: lets a user confirm which bundle is live.
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.12')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.13')
 
   // Second apply (HMR re-activation) must not duplicate the style tag.
   module.apply(ctx)
@@ -734,7 +741,7 @@ test('apply failures are contained (the entry never dies)', () => {
   assert.doesNotThrow(() => module.apply(makeCtx({ runtime: badRuntime }, { toggleSidebar() {} })))
   // The steps before the failure point still applied: css + version marker.
   assert.ok(dom.styleTags.some((t) => t.dataset.plugin === 'dsh-mobile-theme'), 'css injected before the failure')
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.12', 'version marker written')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.3.13', 'version marker written')
 })
 
 test('inside taps follow the navigation whitelist', async () => {
@@ -827,4 +834,51 @@ test('floating button label follows the app html[lang]', () => {
   module.apply(makeCtx(theme, { toggleSidebar() {} }))
   fab = dom.body.children.find((c) => c.className === 'dsh-mobile-theme-fab')
   assert.equal(fab.getAttribute('aria-label'), '切换侧栏')
+})
+
+test('tap-to-reveal for message time labels (touch hover equivalent)', async () => {
+  const dom = makeDom()
+  const theme = makeTheme()
+  const module = loadModule({ document: dom.document, matchMedia: makeMediaQuery(true) })
+  module.apply(makeCtx(theme, { toggleSidebar() {} }))
+
+  const item = {
+    tagName: 'DIV',
+    className: 'Md3f7G_flowItem',
+    attrs: {},
+    setAttribute(k, v) { this.attrs[k] = v },
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null },
+    removeAttribute(k) { delete this.attrs[k] },
+    closest(sel) { return sel.includes('Md3f7G_flowItem') ? this : null }
+  }
+  dom.markedEls.push(item)
+
+  const fireClick = (target) => {
+    for (const l of dom.listeners.filter((l) => l.type === 'click')) l.fn({ target })
+  }
+
+  fireClick(item)
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), '1', 'tap reveals the labels')
+
+  fireClick(item)
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), null, 'second tap hides them')
+
+  fireClick(item)
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), '1')
+  fireClick({ tagName: 'DIV', closest: () => null })
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), null, 'tap elsewhere hides all')
+
+  // Action buttons keep their own behavior — no toggle.
+  const actionBtn = {
+    tagName: 'BUTTON',
+    closest(sel) { return sel.includes('p-xYUq_actions') ? this : null }
+  }
+  fireClick(actionBtn)
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), null, 'action-button taps do not reveal')
+
+  // Auto-hide after 4s.
+  fireClick(item)
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), '1')
+  await delay(4100)
+  assert.equal(item.getAttribute('data-dsh-mobile-times'), null, 'auto-hide after 4s')
 })
