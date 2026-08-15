@@ -606,7 +606,9 @@
 
   [data-dsh-mobile-times="1"] .p-xYUq_timeStart,
   [data-dsh-mobile-times="1"] .p-xYUq_timeEnd {
-    display: inline-flex;
+    /* block (not inline-flex): text-overflow only renders an ellipsis
+       on block containers — inline-flex hard-clips the tail instead. */
+    display: block;
     min-width: 0;
     max-width: 30%;
     overflow: hidden;
@@ -624,18 +626,14 @@
     padding-left: 6px;
   }
 
-  /* User messages carry only a short send time — keep it visible. It
-     takes almost no space and never needs a tap. (Later in the file than
-     the reveal rules, so it wins for user rows regardless of the mark;
-     `padding: 0` pins the position — without it the reveal rules' 6px
-     paddings jump in/out on every tap and the label shifts sideways.) */
+  /* User messages carry only a short send time — keep it visible, never
+     truncated. (Later in the file than the reveal rules, so it wins for
+     user rows regardless of the mark; `padding: 0` pins the position —
+     without it the reveal rules' 6px paddings jump in/out on every tap
+     and the label shifts sideways.) */
   .gdEzaW_userRow .p-xYUq_timeStart,
   .gdEzaW_userRow .p-xYUq_timeEnd {
     display: inline-flex;
-    min-width: 0;
-    max-width: 40%;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
     line-height: 20px;
