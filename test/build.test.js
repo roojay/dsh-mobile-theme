@@ -65,6 +65,15 @@ test('embedded stylesheet keeps the structural and pinned selectors', () => {
   ]) {
     assert.ok(bundle.includes(fragment), `stylesheet must contain: ${fragment}`)
   }
+
+  // The settings content column must be vertically shrinkable, otherwise
+  // long sections overflow the fullscreen sheet and cannot scroll at all
+  // (the panel clips them via overflow: hidden).
+  assert.match(
+    bundle,
+    /\.VOzbGW_content\s*\{[^}]*min-height:\s*0/,
+    'settings content column must set min-height: 0'
+  )
 })
 
 test('embedded tokens are { light, dark } pairs with --dsw-* names', () => {

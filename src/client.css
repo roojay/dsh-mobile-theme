@@ -440,6 +440,17 @@
     flex-direction: column;
   }
 
+  /* Official row layout sized the content column by stretching it against
+     the panel's definite height; in the column layout its height is flex-
+     negotiated instead. Without min-height: 0 the wrapper's implicit
+     min-height: auto can refuse to shrink below the section content, the
+     whole thing overflows, and the panel's overflow: hidden clips the
+     tail with no scrollbar. Clamping it hands scrolling to the official
+     .VOzbGW_options (flex: 1; min-height: 0; overflow-y: auto). */
+  .VOzbGW_content {
+    min-height: 0;
+  }
+
   .VOzbGW_nav {
     flex: none;
     flex-direction: row;
