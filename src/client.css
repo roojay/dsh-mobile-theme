@@ -633,6 +633,21 @@
   [data-dsh-mobile-times="1"] .p-xYUq_timeEnd {
     padding-left: 6px;
   }
+
+  /* User messages carry only a short send time — keep it visible. It
+     takes almost no space and never needs a tap. (Later in the file than
+     the reveal rules, so it wins for user rows regardless of the mark.) */
+  .gdEzaW_userRow .p-xYUq_timeStart,
+  .gdEzaW_userRow .p-xYUq_timeEnd {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 20px;
+  }
 }
 
 /* ── tablet band (768–1023px portrait): modest tightening below the ────── */
