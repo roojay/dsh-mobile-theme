@@ -55,13 +55,11 @@ window.__ModuleLoader__.load({
     var CSS = __DSH_MOBILE_THEME_CSS__
     var TOKENS = __DSH_MOBILE_THEME_TOKENS__
 
-    /** Version marker: lets a user confirm which bundle is actually live. */
+    /** Version marker: lets a user confirm which bundle is actually live
+     *  via `document.body` (no console noise in production). */
     function markVersion() {
       if (typeof document === 'undefined' || document.body === null) return
       document.body.setAttribute('data-dsh-mobile-theme', VERSION)
-      try {
-        console.info(PACKAGE + ' v' + VERSION + ' active')
-      } catch (err) {}
     }
 
     function injectCss() {
