@@ -605,12 +605,26 @@
   }
 
   /* The message time/stats labels are hover-revealed on desktop; touch
-     has no hover, so they would sit permanently in the action row and
-     overflow it into the next message. Hide them — the row stays a
-     single line of action buttons (official desktop parity). */
+     has no hover, so they are shown permanently — but in a compact,
+     truncated form: capped width + ellipsis keeps the action row one
+     clean line instead of overflowing into the next message. */
   .p-xYUq_timeStart,
   .p-xYUq_timeEnd {
-    display: none;
+    min-width: 0;
+    max-width: 30%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 20px;
+  }
+
+  .p-xYUq_timeStart {
+    padding-right: 6px;
+  }
+
+  .p-xYUq_timeEnd {
+    padding-left: 6px;
   }
 }
 
