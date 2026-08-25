@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  ci:
+    name: Test and pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+
+      - name: Check tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          test "$tag" = "$pkg"
+
+      - name: Install peer dependencies
+        run: npm install --ignore-scripts --no-package-lock
+
+      - name: Run tests
+        run: npm test
+
+      - name: Verify package entry points
+        run: |
+          node --input-type=module --eval "await import('./src/index.js')"
+          node --input-type=module --eval '
+            import { readFileSync } from "node:fs"
+            const pkg = JSON.parse(readFileSync("./package.json", "utf8"))
+            const inject = pkg.dsh && pkg.dsh.client && pkg.dsh.client.inject
+            const need = [
+              "@deepseek-ai/dsh-client-ui-theme",
+              "@deepseek-ai/dsh-client-ui-layout"
+            ]
+            for (const id of need) {
+              if (!inject || !inject.includes(id)) {
+                throw new Error("missing dsh.client.inject " + id)
+              }
+              if (!pkg.peerDependencies || pkg.peerDependencies[id] !== "0.1.1-rc.2") {
+                throw new Error("peer dependency must pin " + id + " to DSH 0.1.1-rc.2")
+              }
+            }
+            if (!pkg.exports || pkg.exports["./client"] !== "./lib/client.js") {
+              throw new Error("package.json must export ./client")
+            }
+          '
+
+      - name: Pack tarball
+        run: npm pack
+
+      - name: Verify tarball includes client bundle
+        run: |
+          tarball="$(ls ./*.tgz)"
+          tar -tzf "$tarball" | grep -E '/lib/client\.js$'
+          tar -tzf "$tarball" | grep -E '/package\.json$'
+
+      - name: Publish to npm
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          npm install -g npm@latest
+          tarball="$(ls ./*.tgz)"
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "${name}@${version} already on npm, skip publish"
+          else
+            npm publish "$tarball" --access public --provenance
+          fi
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            ./*.tgz \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

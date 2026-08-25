@@ -36,7 +36,12 @@
   ],
   "license": "MIT",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roojay/dsh-mobile-theme.git"
   },
   "engines": {
     "node": ">=18"
@@ -52,5 +57,9 @@
       ],
       "platform": "web"
     }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-theme": "0.1.1-rc.2"
   }
 }
