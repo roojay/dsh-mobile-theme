@@ -280,7 +280,7 @@ test('apply injects the stylesheet exactly once and upgrades the viewport meta',
   assert.ok(content.startsWith('width=device-width'), 'existing viewport directives preserved')
 
   // Version marker: lets a user confirm which bundle is live.
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.2')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.3')
 
   // Second apply (HMR re-activation) must not duplicate the style tag.
   module.apply(ctx)
@@ -755,7 +755,7 @@ test('apply failures are contained (the entry never dies)', () => {
   assert.doesNotThrow(() => module.apply(makeCtx({ runtime: badRuntime }, { toggleSidebar() {} })))
   // The steps before the failure point still applied: css + version marker.
   assert.ok(dom.styleTags.some((t) => t.dataset.plugin === 'dsh-mobile-theme'), 'css injected before the failure')
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.2', 'version marker written')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.3', 'version marker written')
 })
 
 test('inside taps follow the navigation whitelist', async () => {
