@@ -79,6 +79,11 @@ function makeDom() {
     setProperty(k, v) { this.props[k] = v },
     removeProperty(k) { delete this.props[k] }
   }
+  const settingsTrigger = {
+    tagName: 'BUTTON',
+    clicks: 0,
+    click() { this.clicks += 1 }
+  }
 
   const document = {
     body,
@@ -95,6 +100,7 @@ function makeDom() {
     querySelector(selector) {
       if (selector === 'meta[name="viewport"]') return viewport
       if (selector === '[data-slot="sidebar"]') return slot
+      if (selector === '[data-slot="sidebar"] button[aria-haspopup="dialog"]') return settingsTrigger
       if (selector === '[data-dsh-mobile-sidebar-col]') return col
       if (selector === '[data-dsh-mobile-center-col]') return centerCol
       if (selector === '[data-dsh-mobile-details-col]') return detailsCol
@@ -117,7 +123,7 @@ function makeDom() {
       if (i >= 0) listeners.splice(i, 1)
     }
   }
-  return { document, frame, slot, col, centerCol, detailsCol, viewport, styleTags, listeners, body, rootStyle, scroller, markedEls }
+  return { document, frame, slot, col, centerCol, detailsCol, viewport, styleTags, listeners, body, rootStyle, scroller, markedEls, settingsTrigger }
 }
 
 function makeMediaQuery(initial) {
@@ -274,7 +280,7 @@ test('apply injects the stylesheet exactly once and upgrades the viewport meta',
   assert.ok(content.startsWith('width=device-width'), 'existing viewport directives preserved')
 
   // Version marker: lets a user confirm which bundle is live.
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.0')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.1')
 
   // Second apply (HMR re-activation) must not duplicate the style tag.
   module.apply(ctx)
@@ -340,10 +346,14 @@ test('closes the expanded drawer on backdrop click, inside tap, and Escape', asy
   const layout = { toggleSidebar() { toggles += 1 } }
   module.apply(makeCtx(theme, layout))
 
-  // ☰ floating button: injected at body level, outside React's tree.
+  // ☰ / settings floating buttons: injected at body level, outside React's tree.
   const fab = dom.body.children.find((c) => c.className === 'dsh-mobile-theme-fab')
+  const settingsFab = dom.body.children.find((c) => c.className === 'dsh-mobile-theme-settings-fab')
   assert.ok(fab, 'floating button injected into document.body')
+  assert.ok(settingsFab, 'settings floating button injected into document.body')
   assert.equal(fab.getAttribute('aria-label'), 'Toggle sidebar')
+  assert.equal(settingsFab.getAttribute('aria-label'), 'Settings')
+  assert.equal(settingsFab.getAttribute('aria-haspopup'), 'dialog')
 
   // Expanded: frame lacks the collapsed attribute.
   const fire = (type, target) => {
@@ -367,9 +377,13 @@ test('closes the expanded drawer on backdrop click, inside tap, and Escape', asy
   fab.dispatch('click')
   assert.equal(toggles, 3, 'floating button toggles the sidebar')
 
-  // The FAB must never be treated as an outside dismiss.
+  // The FABs must never be treated as an outside dismiss.
   tap(fab)
+  tap(settingsFab)
   assert.equal(toggles, 3, 'fab taps are not dismisses')
+
+  settingsFab.dispatch('click')
+  assert.equal(dom.settingsTrigger.clicks, 1, 'settings fab clicks the official trigger')
 
   // Any target outside the drawer closes it — including portals or
   // elements with higher stacking contexts that steal the hit-test
@@ -485,12 +499,12 @@ test('teardown removes document listeners and the floating button', () => {
   assert.ok(dom.listeners.some((l) => l.type === 'click'))
   assert.ok(dom.listeners.some((l) => l.type === 'keydown'))
   assert.ok(module.__win.listeners.some((l) => l.type === 'popstate'), 'popstate listener attached')
-  assert.equal(dom.body.children.length, 1, 'fab present before teardown')
+  assert.equal(dom.body.children.length, 2, 'fabs present before teardown')
   for (const { disposer } of ctx._effects) disposer()
   assert.equal(dom.listeners.length, 0, 'all document listeners removed')
   assert.equal(module.__win.listeners.filter((l) => l.type === 'popstate').length, 0, 'popstate listener removed')
   assert.equal(module.__observers.every((o) => o.observed === null), true, 'mutation observer disconnected')
-  assert.equal(dom.body.children.length, 0, 'fab removed on teardown')
+  assert.equal(dom.body.children.length, 0, 'fabs removed on teardown')
 })
 
 test('mirrors aria-expanded on the floating button via the frame observer', () => {
@@ -720,7 +734,7 @@ test('discovers the shell structure late (apply before first render)', async () 
   slotReady = true
   await delay(400)
   assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), 'ok', 'recovered after retry')
-  assert.equal(dom.body.children.length, 1, 'fab appears once the structure is found')
+  assert.equal(dom.body.children.length, 2, 'fabs appear once the structure is found')
 
   const tap = (target) => {
     for (const l of dom.listeners.filter((l) => l.type === 'pointerup')) l.fn({ target })
@@ -741,7 +755,7 @@ test('apply failures are contained (the entry never dies)', () => {
   assert.doesNotThrow(() => module.apply(makeCtx({ runtime: badRuntime }, { toggleSidebar() {} })))
   // The steps before the failure point still applied: css + version marker.
   assert.ok(dom.styleTags.some((t) => t.dataset.plugin === 'dsh-mobile-theme'), 'css injected before the failure')
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.0', 'version marker written')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.1', 'version marker written')
 })
 
 test('inside taps follow the navigation whitelist', async () => {
@@ -828,12 +842,16 @@ test('floating button label follows the app html[lang]', () => {
   dom.document.documentElement.lang = 'zh-CN'
   module.apply(makeCtx(theme, { toggleSidebar() {} }))
   let fab = dom.body.children.find((c) => c.className === 'dsh-mobile-theme-fab')
+  let settingsFab = dom.body.children.find((c) => c.className === 'dsh-mobile-theme-settings-fab')
   assert.equal(fab.getAttribute('aria-label'), '切换侧栏', 'zh label from html[lang]')
+  assert.equal(settingsFab.getAttribute('aria-label'), '设置', 'zh settings label from html[lang]')
 
-  // A second apply (HMR) re-creates the fab with the same localized label.
+  // A second apply (HMR) re-creates the fabs with the same localized labels.
   module.apply(makeCtx(theme, { toggleSidebar() {} }))
   fab = dom.body.children.find((c) => c.className === 'dsh-mobile-theme-fab')
+  settingsFab = dom.body.children.find((c) => c.className === 'dsh-mobile-theme-settings-fab')
   assert.equal(fab.getAttribute('aria-label'), '切换侧栏')
+  assert.equal(settingsFab.getAttribute('aria-label'), '设置')
 })
 
 test('tap-to-reveal for message time labels (touch hover equivalent)', async () => {

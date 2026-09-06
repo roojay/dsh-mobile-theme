@@ -24,12 +24,14 @@
  *      data-dsh-mobile-* attributes the stylesheet keys off — layout CSS
  *      never pins hashed class names, and discovery failure degrades
  *      gracefully (rules inert, official layout intact, body marker set).
- *   6. Drawer behavior + ☰ floating button: with the rail fully hidden
- *      on phones, a body-level floating button (outside React's tree)
- *      is the drawer entry point; backdrop clicks and Escape close the
- *      expanded sidebar via ctx.layout (read opportunistically with
- *      ctx.get — the plugin never hard-depends on ui-layout), and a tap
- *      inside the drawer closes it after React handles the tap.
+ *   6. Drawer behavior + ☰ / settings floating buttons: with the rail
+ *      fully hidden on phones, two body-level buttons (outside React's
+ *      tree) are the entry points — ☰ toggles the drawer, the gear clicks
+ *      the official `sidebar.settings` trigger (`aria-haspopup="dialog"`).
+ *      Backdrop clicks and Escape close the expanded sidebar via
+ *      ctx.layout (read opportunistically with ctx.get — the plugin never
+ *      hard-depends on ui-layout), and a tap inside the drawer closes it
+ *      after React handles the tap.
  *   7. Accessibility + native navigation: the FAB mirrors aria-expanded
  *      through a MutationObserver on the frame's data attributes; opening
  *      a drawer pushes a marked history entry and the Android back
@@ -433,10 +435,10 @@ window.__ModuleLoader__.load({
         }, PACKAGE + ': message time tap-reveal')
       }
 
-      // Drawer behavior + ☰ floating button (enhancement; layout is
-      // optional). The button lives at body level — outside every React
-      // container — so no reconciliation can wipe it. CSS shows it only
-      // on phones; the header reserves its slot on that band.
+      // Drawer behavior + ☰ / settings floating buttons (enhancement;
+      // layout is optional). The buttons live at body level — outside
+      // every React container — so no reconciliation can wipe them. CSS
+      // shows them only on phones; the header reserves their slots.
       var layout = null
       try {
         layout = ctx.get('layout')
@@ -472,23 +474,58 @@ window.__ModuleLoader__.load({
           var slot = marks.slot
           var sidebarCol = marks.sidebarCol
 
-          var fab = null
-          if (typeof document.body !== 'undefined' && document.body !== null) {
-            fab = document.createElement('button')
-            fab.type = 'button'
-            fab.className = 'dsh-mobile-theme-fab'
-            // Follow the app's own html[lang] for the accessible label.
+          function appIsZh() {
             var docLang = typeof document.documentElement === 'object' && document.documentElement !== null
               ? (document.documentElement.lang || document.documentElement.getAttribute('lang') || '')
               : ''
-            fab.setAttribute('aria-label', docLang.toLowerCase().indexOf('zh') === 0 ? '切换侧栏' : 'Toggle sidebar')
-            fab.setAttribute('aria-expanded', 'false')
-            fab.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>'
-            fab.addEventListener('click', function () {
-              layout.toggleSidebar()
-            })
-            document.body.appendChild(fab)
+            return docLang.toLowerCase().indexOf('zh') === 0
           }
+
+          function appendFab(className, label, html, onClick) {
+            if (typeof document.body === 'undefined' || document.body === null) return null
+            var btn = document.createElement('button')
+            btn.type = 'button'
+            btn.className = className
+            btn.setAttribute('aria-label', label)
+            btn.innerHTML = html
+            btn.addEventListener('click', onClick)
+            document.body.appendChild(btn)
+            return btn
+          }
+
+          function isFabTarget(t) {
+            if (t == null) return false
+            if (fab !== null && (t === fab || (typeof fab.contains === 'function' && fab.contains(t)))) return true
+            if (settingsFab !== null && (t === settingsFab || (typeof settingsFab.contains === 'function' && settingsFab.contains(t)))) return true
+            return false
+          }
+
+          function openSettings() {
+            var trigger = null
+            try {
+              trigger = document.querySelector('[data-slot="sidebar"] button[aria-haspopup="dialog"]')
+            } catch (err) {
+              trigger = null
+            }
+            if (trigger !== null && typeof trigger.click === 'function') trigger.click()
+          }
+
+          var fab = null
+          var settingsFab = null
+          fab = appendFab(
+            'dsh-mobile-theme-fab',
+            appIsZh() ? '切换侧栏' : 'Toggle sidebar',
+            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>',
+            function () { layout.toggleSidebar() }
+          )
+          if (fab !== null) fab.setAttribute('aria-expanded', 'false')
+          settingsFab = appendFab(
+            'dsh-mobile-theme-settings-fab',
+            appIsZh() ? '设置' : 'Settings',
+            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.4"/><path d="M10 3.2v1.6M10 15.2v1.6M3.2 10h1.6M15.2 10h1.6M5.3 5.3l1.1 1.1M13.6 13.6l1.1 1.1M5.3 14.7l1.1-1.1M13.6 6.4l1.1-1.1"/></svg>',
+            openSettings
+          )
+          if (settingsFab !== null) settingsFab.setAttribute('aria-haspopup', 'dialog')
 
           var historyApi = win !== null && win.history &&
             typeof win.history.pushState === 'function' && typeof win.history.back === 'function'
@@ -546,8 +583,8 @@ window.__ModuleLoader__.load({
             if (!drawerMode()) return
             if (!expanded()) return
             var t = e && e.target !== void 0 ? e.target : null
-            // The ☰ button toggles itself; never treat it as a dismiss.
-            if (fab !== null && t === fab) return
+            // The ☰ / settings buttons toggle themselves; never treat them as a dismiss.
+            if (isFabTarget(t)) return
             // Whitelist inside the drawer: ONLY navigation rows close it
             // (session rows, search results that jump to a session, and the
             // new-session button). Every other control — search input,
@@ -688,6 +725,7 @@ window.__ModuleLoader__.load({
             if (observer !== null && typeof observer.disconnect === 'function') observer.disconnect()
             if (remarker !== null && typeof remarker.disconnect === 'function') remarker.disconnect()
             if (fab !== null && fab.parentNode !== null) fab.parentNode.removeChild(fab)
+            if (settingsFab !== null && settingsFab.parentNode !== null) settingsFab.parentNode.removeChild(settingsFab)
           }
         }
       }

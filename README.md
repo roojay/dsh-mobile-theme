@@ -14,9 +14,9 @@ No React code, no host-plane services, no settings schema: the layout work is on
 
 | Surface | Desktop behavior | Mobile behavior |
 |---|---|---|
-| Sidebar | grid column, 264–420px | fully hidden; a ☰ floating button (top-left, body-level DOM) opens it as an **overlay drawer** (`min(320px, 88vw)`) over a masked backdrop; taps on **navigation rows** (session rows, search results, new session) close it; search, settings, tools and every other in-drawer control keep it open; while an official overlay is open (a dialog with `aria-modal="true"` or a popover `role="menu"`), no interaction inside it touches the drawer; the mask, the toggle and Esc close it |
+| Sidebar | grid column, 264–420px | fully hidden; a ☰ floating button (top-left, body-level DOM) opens it as an **overlay drawer** (`min(320px, 88vw)`) over a masked backdrop; a gear floating button (top-right) opens **Settings** without unfolding the drawer; taps on **navigation rows** (session rows, search results, new session) close it; search, settings, tools and every other in-drawer control keep it open; while an official overlay is open (a dialog with `aria-modal="true"` or a popover `role="menu"`), no interaction inside it touches the drawer; the mask, the toggle and Esc close it |
 | Conversation | center column | **true full width** — the grid is overridden to a single `minmax(0, 1fr)` track, no rail is reserved |
-| Header | fixed title row | **rearranged**: left slot reserved for the ☰ button, compact title cluster, horizontally scrollable utilities |
+| Header | fixed title row | **rearranged**: left slot reserved for ☰, right slot reserved for the settings gear, compact title cluster, horizontally scrollable utilities |
 | Details panel | third grid column, 300–520px | right-side overlay drawer; the chat keeps the full width behind it |
 | Column drag handles | visible | hidden (no col-resize on touch) |
 | Composer | 34px send button, 16px clearance | 40px touch targets, tighter clearance, single-line bottom bar (the left tools group shrinks flexibly, selects truncate — no scroll container, which would clip the permission popover; the send button keeps its place), `env(safe-area-inset-bottom)` padding so the input bar clears the home indicator |
@@ -34,7 +34,7 @@ No React code, no host-plane services, no settings schema: the layout work is on
 | Android back gesture | — | the back gesture closes the open drawer (marked history entries; foreign entries are never intercepted) |
 | Keyboard | — | `visualViewport` fallback pads the conversation root above the keyboard on browsers whose layout viewport does not shrink (padding on the conversation root, not transform — the scroll area shrinks, not its content, so the to-bottom affordance stays glued; applied only while an editable is focused, retracted on blur); **switching sessions never pops the keyboard** (an intent guard drops programmatic composer focus) |
 | Long-press copy | — | message/code text stays selectable, iOS link-callout suppressed on controls |
-| Accessibility | — | ☰ button mirrors `aria-expanded` via a frame MutationObserver; its `aria-label` follows the app `html[lang]` |
+| Accessibility | — | ☰ button mirrors `aria-expanded` via a frame MutationObserver; both FABs' `aria-label` follow the app `html[lang]` |
 
 The viewport meta is upgraded at runtime with `viewport-fit=cover` (real safe-area `env()` values on notched devices) and `interactive-widget=resizes-content` (Android Chrome keeps the composer above the on-screen keyboard).
 
@@ -97,7 +97,7 @@ The official seams that are documented as extension points are the theme token s
 | Tier | What it does | Depends on | Failure mode on upstream change |
 |---|---|---|---|
 | 1 · official API | theme layer, registered theme, viewport meta, drawer toggles | token registry, `ctx.layout` | unaffected (documented API) |
-| 2 · structural marks | full-width grid, overlay drawers, backdrop, ☰ button, keyboard lift | `data-slot` structure + DOM column order, self-checked at runtime | **graceful degradation**: discovery fails → no marks → layout rules stay inert → the official rail layout remains, fully usable; `body[data-dsh-mobile-layout="degraded"]` + one console line report it |
+| 2 · structural marks | full-width grid, overlay drawers, backdrop, ☰ / settings FABs, keyboard lift | `data-slot` structure + DOM column order, self-checked at runtime | **graceful degradation**: discovery fails → no marks → layout rules stay inert → the official rail layout remains, fully usable; `body[data-dsh-mobile-layout="degraded"]` + one console line report it |
 | 3 · cosmetic | touch sizes, fullscreen settings sheet, picker/cordis/jobs tweaks | pinned 0.1.0-rc.6 class hashes, concentrated in one section | cosmetic-only loss; the app stays usable |
 
 Tier 2 is the key mechanism: at apply time the bundle walks from the documented `[data-slot="sidebar"]` wrapper (slot wrapper → sidebar column → grid frame), verifies the frame against the app's inline `gridTemplateColumns` (self-check 1) and the third column against the `data-shell-overlay` sentinel (self-check 2), then tags the columns with plugin-owned `data-dsh-mobile-*` attributes. The stylesheet keys every layout-critical rule off those attributes — never a hash. A child-list MutationObserver re-marks if columns remount. Re-hashing classes upstream therefore cannot break the layout; only a change to the documented slot structure can, and then the plugin degrades rather than half-applies.
@@ -105,6 +105,6 @@ Tier 2 is the key mechanism: at apply time the bundle walks from the documented 
 ## Known limitations
 
 - **Tier 3 cosmetic hashes are version-pinned**: the fine-grained tweaks target the class hashes shipped by `@deepseek-ai/dsh-*` 0.1.0-rc.6 (e.g. `VOzbGW_panel`, `uV2eYG_primary`). An upstream re-hash loses those tweaks (cosmetic only); the `npm test` selector contract makes the pin explicit and fails the build when this repo's own CSS drifts.
-- **Drawer is CSS + JS agreement**: the rail is fully hidden on phones, so the drawer entry point is the injected ☰ floating button; backdrop/Escape closing and the button all go through `ctx.layout`. Without the layout service the CSS layer still applies, but the ☰ button is not injected (the drawer stays hidden on phones).
+- **Drawer is CSS + JS agreement**: the rail is fully hidden on phones, so the drawer entry point is the injected ☰ floating button; backdrop/Escape closing and the button all go through `ctx.layout`. The settings gear clicks the official `sidebar.settings` trigger (`button[aria-haspopup="dialog"]`). 0.1.2's settings overlay is `position:fixed` inside the transformed sidebar column, so the stylesheet drops that transform while a modal dialog is open. Without the layout service the CSS layer still applies, but the FABs are not injected (the drawer stays hidden on phones).
 - **Registered theme ids are in-process**: `dsh-mobile` is not persisted across reloads (built-in settings schema admits only `light`/`dark`/`system`) and the Appearance row does not list third-party themes — this is the documented surface-layer nature of third-party themes.
 - **History-close edge**: if the app pushes its own history entries above an open drawer, a UI-driven close consumes the top entry and leaves the drawer's marked entry for one extra back press (the marker keeps the back handler from misfiring on foreign entries).

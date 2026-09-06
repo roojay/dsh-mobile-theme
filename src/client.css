@@ -69,7 +69,7 @@
   }
 
   /* Sidebar: fully off-screen; expands as an overlay drawer. The ☰
-     floating button (injected by the client bundle) is the entry point. */
+     floating button is the drawer entry; the gear opens Settings. */
   [data-dsh-mobile-sidebar-col] {
     position: absolute;
     top: 0;
@@ -94,6 +94,31 @@
     transition:
       transform 0.24s var(--ds-ease-in-out),
       box-shadow 0.24s var(--ds-ease-in-out);
+  }
+
+  /* 0.1.2 SettingsRoot paints a position:fixed overlay as a descendant of
+     the sidebar column. A parent transform makes `fixed` relative to that
+     ancestor, so the sheet stays trapped in the off-screen drawer. While a
+     modal dialog is open, drop the transform so the overlay covers the
+     viewport. Official overlay z-index is 1000 and hides the drawer. */
+  [data-dsh-mobile-sidebar-col]:has([role="dialog"][aria-modal="true"]) {
+    visibility: visible;
+    transform: none;
+    box-shadow: none;
+    overflow: visible;
+    transition: none;
+    pointer-events: none;
+  }
+
+  [data-dsh-mobile-sidebar-col]:has([role="dialog"][aria-modal="true"]) [role="presentation"] {
+    pointer-events: auto;
+  }
+
+  /* Lift the official settings trigger above the home indicator when the
+     drawer is open; the body-level gear FAB is the collapsed-rail entry. */
+  [data-dsh-mobile-sidebar-col] [data-slot="sidebar"] {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
   }
 
   /* Backdrop: covers the conversation while the drawer is open; any tap
@@ -147,11 +172,13 @@
     padding: 8px 12px 0;
   }
 
-  /* Header rearrangement: reserve the left slot for the ☰ button, keep
-     the title cluster and the utilities on one scrollable row. */
+  /* Header rearrangement: reserve the left slot for ☰ and the right slot
+     for the settings gear, keep the title cluster and the utilities on
+     one scrollable row. */
   .wSkVaW_titleRow {
     min-height: 40px;
     padding-left: 44px;
+    padding-right: 44px;
   }
 
   .wSkVaW_titleCluster {
@@ -555,18 +582,19 @@
   }
 }
 
-/* ── the ☰ floating button (injected by the client bundle) ────────────── */
+/* ── the ☰ / settings floating buttons (injected by the client bundle) ── */
 
-.dsh-mobile-theme-fab {
+.dsh-mobile-theme-fab,
+.dsh-mobile-theme-settings-fab {
   display: none;
 }
 
 @media (max-width: 767px), (max-width: 900px) and (max-height: 500px) {
-  .dsh-mobile-theme-fab {
+  .dsh-mobile-theme-fab,
+  .dsh-mobile-theme-settings-fab {
     position: fixed;
     z-index: 45;
     top: calc(8px + env(safe-area-inset-top, 0px));
-    left: calc(12px + env(safe-area-inset-left, 0px));
     width: 36px;
     height: 36px;
     padding: 0;
@@ -580,19 +608,32 @@
     display: grid;
   }
 
-  .dsh-mobile-theme-fab:hover {
+  .dsh-mobile-theme-fab {
+    left: calc(12px + env(safe-area-inset-left, 0px));
+  }
+
+  .dsh-mobile-theme-settings-fab {
+    right: calc(12px + env(safe-area-inset-right, 0px));
+    left: auto;
+  }
+
+  .dsh-mobile-theme-fab:hover,
+  .dsh-mobile-theme-settings-fab:hover {
     background: var(--dsw-alias-button-floating-hover);
   }
 
-  .dsh-mobile-theme-fab:focus-visible {
+  .dsh-mobile-theme-fab:focus-visible,
+  .dsh-mobile-theme-settings-fab:focus-visible {
     outline: 2px solid var(--dsw-alias-state-business-primary);
     outline-offset: 2px;
   }
 
-  .dsh-mobile-theme-fab svg {
+  .dsh-mobile-theme-fab svg,
+  .dsh-mobile-theme-settings-fab svg {
     width: 18px;
     height: 18px;
     display: block;
+    pointer-events: none;
   }
 }
 
@@ -680,7 +721,8 @@
 @media (prefers-reduced-motion: reduce) {
   [data-dsh-mobile-sidebar-col],
   [data-dsh-mobile-details-col],
-  .dsh-mobile-theme-fab {
+  .dsh-mobile-theme-fab,
+  .dsh-mobile-theme-settings-fab {
     transition: none;
   }
 }
