@@ -1,6 +1,6 @@
 {
   "name": "dsh-mobile-theme",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Mobile-adaptation theme plugin for the DeepSeek Harness Web surface: phone layout (overlay sidebar/details drawers, touch-size controls, safe-area insets, fullscreen settings) plus an automatic viewport theme layer stacked through the official theme registry",
   "type": "module",
   "main": "./src/index.js",

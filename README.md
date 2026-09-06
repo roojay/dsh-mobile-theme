@@ -14,9 +14,9 @@ No React code, no host-plane services, no settings schema: the layout work is on
 
 | Surface | Desktop behavior | Mobile behavior |
 |---|---|---|
-| Sidebar | grid column, 264–420px | fully hidden; a ☰ floating button (top-left, body-level DOM) opens it as an **overlay drawer** (`min(320px, 88vw)`) over a masked backdrop; a gear floating button (top-right) opens **Settings** without unfolding the drawer; taps on **navigation rows** (session rows, search results, new session) close it; search, settings, tools and every other in-drawer control keep it open; while an official overlay is open (a dialog with `aria-modal="true"` or a popover `role="menu"`), no interaction inside it touches the drawer; the mask, the toggle and Esc close it |
+| Sidebar | grid column, 264–420px | fully hidden; a ☰ floating button (top-left, body-level DOM) opens it as an **overlay drawer** (`min(320px, 88vw)`) over a masked backdrop; a gear floating button sits next to ☰ and opens **Settings** without unfolding the drawer; taps on **navigation rows** (session rows, search results, new session) close it; search, settings, tools and every other in-drawer control keep it open; while an official overlay is open (a dialog with `aria-modal="true"` or a popover `role="menu"`), no interaction inside it touches the drawer; the mask, the toggle and Esc close it |
 | Conversation | center column | **true full width** — the grid is overridden to a single `minmax(0, 1fr)` track, no rail is reserved |
-| Header | fixed title row | **rearranged**: left slot reserved for ☰, right slot reserved for the settings gear, compact title cluster, horizontally scrollable utilities |
+| Header | fixed title row | **rearranged**: left slot reserved for ☰ and the settings gear, compact title cluster, horizontally scrollable utilities |
 | Details panel | third grid column, 300–520px | right-side overlay drawer; the chat keeps the full width behind it |
 | Column drag handles | visible | hidden (no col-resize on touch) |
 | Composer | 34px send button, 16px clearance | 40px touch targets, tighter clearance, single-line bottom bar (the left tools group shrinks flexibly, selects truncate — no scroll container, which would clip the permission popover; the send button keeps its place), `env(safe-area-inset-bottom)` padding so the input bar clears the home indicator |
