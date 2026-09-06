@@ -7,7 +7,7 @@
 | # | 操作 | 预期 |
 |---|---|---|
 | 0.1 | 硬刷新页面 | 页面正常渲染（无失败卡片） |
-| 0.2 | `document.body.getAttribute('data-dsh-mobile-theme')` | `"0.3.19"` |
+| 0.2 | `document.body.getAttribute('data-dsh-mobile-theme')` | `"0.4.0"` |
 | 0.3 | `document.body.getAttribute('data-dsh-mobile-layout')` | `"ok"`（结构自标记成功） |
 
 建议环境矩阵：**Android Chrome**、**iOS Safari**、**微信内置浏览器（X5）** 至少各走一遍 §1-§3；其余项在任意一台设备过一遍即可。
@@ -64,7 +64,7 @@
 ## 5. 记录模板
 
 ```
-设备/浏览器：________  视口：________  版本标记：v0.3.19
+设备/浏览器：________  视口：________  版本标记：v0.4.0
 §0 全部通过：□   §1 全部通过：□   §2 全部通过：□   §3 全部通过：□
 失败项编号与现象：
 ```
