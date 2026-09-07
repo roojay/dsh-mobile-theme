@@ -29,7 +29,6 @@ test('embedded stylesheet keeps the structural and pinned selectors', () => {
     '@media (max-width: 900px) and (max-height: 500px)',
     'grid-template-columns: minmax(0, 1fr) 0px 0px !important',
     '.dsh-mobile-theme-fab',
-    '.dsh-mobile-theme-settings-fab',
     '[data-dsh-mobile-sidebar-col]:has([role=\\"dialog\\"][aria-modal=\\"true\\"])',
     'env(safe-area-inset-bottom, 0px)',
     '@media (hover: none)',
@@ -48,6 +47,7 @@ test('embedded stylesheet keeps the structural and pinned selectors', () => {
     // (concentrated here; their failure mode is cosmetic only).
     '.pI_x6G_handle',
     '.VOzbGW_panel',
+    '.VOzbGW_overlay.VOzbGW_overlay',
     '[role=\\"dialog\\"][aria-modal=\\"true\\"] > nav',
     '.VOzbGW_nav.VOzbGW_nav',
     '.uV2eYG_primary',

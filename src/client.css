@@ -44,8 +44,8 @@
 
   /* ── shell frame: true full-width center, overlay drawers ──────────── */
   /* Official 0.1.2 still reserves a 56px icon rail below 1024px. On phones
-     that rail steals conversation width; hide it and use body-level ☰ /
-     settings buttons instead. */
+     that rail steals conversation width; hide it and use a body-level ☰
+     to open the overlay drawer. Settings stays in the drawer footer. */
   [data-dsh-mobile-frame] {
     grid-template-columns: minmax(0, 1fr) 0px 0px !important;
     padding-left: env(safe-area-inset-left, 0px);
@@ -92,26 +92,14 @@
       box-shadow 0.24s var(--ds-ease-in-out);
   }
 
-  /* 0.1.2 SettingsRoot paints a position:fixed overlay as a descendant of
-     the sidebar column. A parent transform makes `fixed` relative to that
-     ancestor, so the sheet stays trapped in the off-screen drawer. While a
-     modal dialog is open, drop the transform so the overlay covers the
-     viewport. Official overlay z-index is 1000 and hides the drawer. */
+  /* Keep the drawer on-screen while Settings is open (opened from the
+     drawer foot). Do not promote the overlay to the viewport. */
   [data-dsh-mobile-sidebar-col]:has([role="dialog"][aria-modal="true"]) {
     visibility: visible;
     transform: none;
-    box-shadow: none;
-    overflow: visible;
-    transition: none;
-    pointer-events: none;
+    overflow: hidden;
   }
 
-  [data-dsh-mobile-sidebar-col]:has([role="dialog"][aria-modal="true"]) [role="presentation"] {
-    pointer-events: auto;
-  }
-
-  /* Lift the official settings trigger above the home indicator when the
-     drawer is open; the body-level gear FAB is the collapsed-rail entry. */
   [data-dsh-mobile-sidebar-col] [data-slot="sidebar"] {
     padding-bottom: env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
@@ -168,10 +156,10 @@
     padding: 8px 12px 0;
   }
 
-  /* Reserve the left slot for ☰ + settings FABs. */
+  /* Reserve the left slot for ☰. */
   .wSkVaW_titleRow {
     min-height: 40px;
-    padding-left: 96px;
+    padding-left: 44px;
   }
 
   .wSkVaW_titleCluster {
@@ -449,16 +437,22 @@
 
   /* ── popup surfaces ───────────────────────────────────────────────── */
 
-  /* Settings becomes a full-screen sheet with a horizontally scrollable
-     section nav instead of the 188px side column.
-     Official CSS modules inject when Settings opens (after this tag), so
-     beat `.VOzbGW_nav { flex-direction: column }` with the dialog+nav
-     structure — hashes are a fallback. */
+  /* Settings stays inside the expanded drawer (same width as the menu),
+     not a viewport-wide sheet. Official overlay is position:fixed; pin it
+     to the sidebar column instead. Nav stays a horizontal strip. */
+  [data-dsh-mobile-sidebar-col] [role="presentation"]:has(> [role="dialog"][aria-modal="true"]),
+  .VOzbGW_overlay.VOzbGW_overlay {
+    position: absolute;
+    inset: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
   [role="dialog"][aria-modal="true"]:has(> nav),
   .VOzbGW_panel.VOzbGW_panel {
     width: 100%;
     max-width: none;
-    height: 100dvh;
+    height: 100%;
     max-height: none;
     border-radius: 0;
     flex-direction: column;
@@ -485,7 +479,7 @@
     width: 100%;
     max-width: none;
     padding: 10px 12px;
-    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    padding-top: 10px;
     border-bottom: 1px solid var(--dsw-alias-border-l2);
     overflow-x: auto;
     scrollbar-width: none;
@@ -593,17 +587,16 @@
 
 /* ── the ☰ / settings floating buttons (injected by the client bundle) ── */
 
-.dsh-mobile-theme-fab,
-.dsh-mobile-theme-settings-fab {
+.dsh-mobile-theme-fab {
   display: none;
 }
 
 @media (max-width: 767px), (max-width: 900px) and (max-height: 500px) {
-  .dsh-mobile-theme-fab,
-  .dsh-mobile-theme-settings-fab {
+  .dsh-mobile-theme-fab {
     position: fixed;
     z-index: 60;
     top: calc(8px + env(safe-area-inset-top, 0px));
+    left: calc(12px + env(safe-area-inset-left, 0px));
     width: 36px;
     height: 36px;
     padding: 0;
@@ -617,28 +610,16 @@
     display: grid !important;
   }
 
-  .dsh-mobile-theme-fab {
-    left: calc(12px + env(safe-area-inset-left, 0px));
-  }
-
-  .dsh-mobile-theme-settings-fab {
-    left: calc(56px + env(safe-area-inset-left, 0px));
-    right: auto;
-  }
-
-  .dsh-mobile-theme-fab:hover,
-  .dsh-mobile-theme-settings-fab:hover {
+  .dsh-mobile-theme-fab:hover {
     background: var(--dsw-alias-button-floating-hover);
   }
 
-  .dsh-mobile-theme-fab:focus-visible,
-  .dsh-mobile-theme-settings-fab:focus-visible {
+  .dsh-mobile-theme-fab:focus-visible {
     outline: 2px solid var(--dsw-alias-state-business-primary);
     outline-offset: 2px;
   }
 
-  .dsh-mobile-theme-fab svg,
-  .dsh-mobile-theme-settings-fab svg {
+  .dsh-mobile-theme-fab svg {
     width: 18px;
     height: 18px;
     display: block;
@@ -730,8 +711,7 @@
 @media (prefers-reduced-motion: reduce) {
   [data-dsh-mobile-sidebar-col],
   [data-dsh-mobile-details-col],
-  .dsh-mobile-theme-fab,
-  .dsh-mobile-theme-settings-fab {
+  .dsh-mobile-theme-fab {
     transition: none;
   }
 }

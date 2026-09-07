@@ -448,7 +448,6 @@ window.__ModuleLoader__.load({
       }
       if (layout !== null && typeof layout.toggleSidebar === 'function' && typeof document !== 'undefined') {
         var drawerFab = null
-        var drawerSettingsFab = null
 
         ctx.effect(function () {
           var fabCleanup = injectFabs(layout)
@@ -474,53 +473,26 @@ window.__ModuleLoader__.load({
 
         function injectFabs(layoutHandle) {
           var fab = null
-          var settingsFab = null
           function appIsZh() {
             var docLang = typeof document.documentElement === 'object' && document.documentElement !== null
               ? (document.documentElement.lang || document.documentElement.getAttribute('lang') || '')
               : ''
             return docLang.toLowerCase().indexOf('zh') === 0
           }
-          function appendFab(className, label, html, onClick) {
-            if (typeof document.body === 'undefined' || document.body === null) return null
-            var btn = document.createElement('button')
-            btn.type = 'button'
-            btn.className = className
-            btn.setAttribute('aria-label', label)
-            btn.innerHTML = html
-            btn.addEventListener('click', onClick)
-            document.body.appendChild(btn)
-            return btn
+          if (typeof document.body !== 'undefined' && document.body !== null) {
+            fab = document.createElement('button')
+            fab.type = 'button'
+            fab.className = 'dsh-mobile-theme-fab'
+            fab.setAttribute('aria-label', appIsZh() ? '切换侧栏' : 'Toggle sidebar')
+            fab.setAttribute('aria-expanded', 'false')
+            fab.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>'
+            fab.addEventListener('click', function () { layoutHandle.toggleSidebar() })
+            document.body.appendChild(fab)
           }
-          fab = appendFab(
-            'dsh-mobile-theme-fab',
-            appIsZh() ? '切换侧栏' : 'Toggle sidebar',
-            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>',
-            function () { layoutHandle.toggleSidebar() }
-          )
-          if (fab !== null) fab.setAttribute('aria-expanded', 'false')
-          settingsFab = appendFab(
-            'dsh-mobile-theme-settings-fab',
-            appIsZh() ? '设置' : 'Settings',
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-            function () {
-              var trigger = null
-              try {
-                trigger = document.querySelector('[data-slot="sidebar"] button[aria-haspopup="dialog"]')
-              } catch (err) {
-                trigger = null
-              }
-              if (trigger !== null && typeof trigger.click === 'function') trigger.click()
-            }
-          )
-          if (settingsFab !== null) settingsFab.setAttribute('aria-haspopup', 'dialog')
           drawerFab = fab
-          drawerSettingsFab = settingsFab
           return function () {
             if (fab !== null && fab.parentNode !== null) fab.parentNode.removeChild(fab)
-            if (settingsFab !== null && settingsFab.parentNode !== null) settingsFab.parentNode.removeChild(settingsFab)
             drawerFab = null
-            drawerSettingsFab = null
           }
         }
 
@@ -534,7 +506,7 @@ window.__ModuleLoader__.load({
             var node = t
             while (node) {
               var cls = node.className || ''
-              if (cls === 'dsh-mobile-theme-fab' || cls === 'dsh-mobile-theme-settings-fab') return true
+              if (cls === 'dsh-mobile-theme-fab') return true
               node = node.parentNode || node.parentElement || null
             }
             return false
