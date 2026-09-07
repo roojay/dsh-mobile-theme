@@ -435,10 +435,11 @@ window.__ModuleLoader__.load({
         }, PACKAGE + ': message time tap-reveal')
       }
 
-      // Drawer behavior + ☰ / settings floating buttons (enhancement;
-      // layout is optional). The buttons live at body level — outside
-      // every React container — so no reconciliation can wipe them. CSS
-      // shows them only on phones; the header reserves their slots.
+      // Drawer behavior + ☰ / settings floating buttons. Buttons are
+      // injected as soon as `layout` is available — they must not wait
+      // on shell-column discovery, or hiding the official 56px rail
+      // leaves the phone with no entry point. CSS shows them only on
+      // phones; the header reserves their slots.
       var layout = null
       try {
         layout = ctx.get('layout')
@@ -446,10 +447,11 @@ window.__ModuleLoader__.load({
         layout = null
       }
       if (layout !== null && typeof layout.toggleSidebar === 'function' && typeof document !== 'undefined') {
+        var drawerFab = null
+        var drawerSettingsFab = null
+
         ctx.effect(function () {
-          // Deferred init: the slot structure may not exist yet when apply
-          // runs (activation races the shell's first commit). Retry for a
-          // few seconds, then give up silently — never fail the fiber.
+          var fabCleanup = injectFabs(layout)
           var cleanup = function () {}
           var timer = null
           var attempts = 0
@@ -466,21 +468,19 @@ window.__ModuleLoader__.load({
           return function () {
             if (timer !== null) clearTimeout(timer)
             cleanup()
+            fabCleanup()
           }
         }, PACKAGE + ': drawer + fab behavior')
 
-        function initDrawer(marks) {
-          var frame = marks.frame
-          var slot = marks.slot
-          var sidebarCol = marks.sidebarCol
-
+        function injectFabs(layoutHandle) {
+          var fab = null
+          var settingsFab = null
           function appIsZh() {
             var docLang = typeof document.documentElement === 'object' && document.documentElement !== null
               ? (document.documentElement.lang || document.documentElement.getAttribute('lang') || '')
               : ''
             return docLang.toLowerCase().indexOf('zh') === 0
           }
-
           function appendFab(className, label, html, onClick) {
             if (typeof document.body === 'undefined' || document.body === null) return null
             var btn = document.createElement('button')
@@ -492,40 +492,53 @@ window.__ModuleLoader__.load({
             document.body.appendChild(btn)
             return btn
           }
-
-          function isFabTarget(t) {
-            if (t == null) return false
-            if (fab !== null && (t === fab || (typeof fab.contains === 'function' && fab.contains(t)))) return true
-            if (settingsFab !== null && (t === settingsFab || (typeof settingsFab.contains === 'function' && settingsFab.contains(t)))) return true
-            return false
-          }
-
-          function openSettings() {
-            var trigger = null
-            try {
-              trigger = document.querySelector('[data-slot="sidebar"] button[aria-haspopup="dialog"]')
-            } catch (err) {
-              trigger = null
-            }
-            if (trigger !== null && typeof trigger.click === 'function') trigger.click()
-          }
-
-          var fab = null
-          var settingsFab = null
           fab = appendFab(
             'dsh-mobile-theme-fab',
             appIsZh() ? '切换侧栏' : 'Toggle sidebar',
             '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>',
-            function () { layout.toggleSidebar() }
+            function () { layoutHandle.toggleSidebar() }
           )
           if (fab !== null) fab.setAttribute('aria-expanded', 'false')
           settingsFab = appendFab(
             'dsh-mobile-theme-settings-fab',
             appIsZh() ? '设置' : 'Settings',
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-            openSettings
+            function () {
+              var trigger = null
+              try {
+                trigger = document.querySelector('[data-slot="sidebar"] button[aria-haspopup="dialog"]')
+              } catch (err) {
+                trigger = null
+              }
+              if (trigger !== null && typeof trigger.click === 'function') trigger.click()
+            }
           )
           if (settingsFab !== null) settingsFab.setAttribute('aria-haspopup', 'dialog')
+          drawerFab = fab
+          drawerSettingsFab = settingsFab
+          return function () {
+            if (fab !== null && fab.parentNode !== null) fab.parentNode.removeChild(fab)
+            if (settingsFab !== null && settingsFab.parentNode !== null) settingsFab.parentNode.removeChild(settingsFab)
+            drawerFab = null
+            drawerSettingsFab = null
+          }
+        }
+
+        function initDrawer(marks) {
+          var frame = marks.frame
+          var slot = marks.slot
+          var sidebarCol = marks.sidebarCol
+
+          function isFabTarget(t) {
+            if (t == null) return false
+            var node = t
+            while (node) {
+              var cls = node.className || ''
+              if (cls === 'dsh-mobile-theme-fab' || cls === 'dsh-mobile-theme-settings-fab') return true
+              node = node.parentNode || node.parentElement || null
+            }
+            return false
+          }
 
           var historyApi = win !== null && win.history &&
             typeof win.history.pushState === 'function' && typeof win.history.back === 'function'
@@ -668,7 +681,7 @@ window.__ModuleLoader__.load({
             observer = new MutationObserver(function () {
               var sidebarOpen = expanded()
               var detailsOpenNow = detailsOpen()
-              if (fab !== null) fab.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false')
+              if (drawerFab !== null) drawerFab.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false')
               if (!historyApi) return
 
               if (drawerMode()) {
@@ -724,15 +737,13 @@ window.__ModuleLoader__.load({
             if (win !== null && historyApi) win.removeEventListener('popstate', onPopState)
             if (observer !== null && typeof observer.disconnect === 'function') observer.disconnect()
             if (remarker !== null && typeof remarker.disconnect === 'function') remarker.disconnect()
-            if (fab !== null && fab.parentNode !== null) fab.parentNode.removeChild(fab)
-            if (settingsFab !== null && settingsFab.parentNode !== null) settingsFab.parentNode.removeChild(settingsFab)
           }
         }
       }
     }
 
     exports.apply = apply
-    exports.inject = ['theme']
+    exports.inject = ['theme', 'layout']
     return module.exports
   }
 })

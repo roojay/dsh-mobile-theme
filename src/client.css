@@ -607,14 +607,14 @@
     width: 36px;
     height: 36px;
     padding: 0;
-    border: 1px solid var(--dsw-alias-border-l2);
+    border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.16));
     border-radius: 12px;
-    background: var(--dsw-alias-button-floating-fill);
-    color: var(--dsw-alias-label-primary);
-    box-shadow: var(--dsw-shadow-lv2);
+    background: var(--dsw-alias-button-floating-fill, var(--dsw-alias-bg-layer-2, #fff));
+    color: var(--dsw-alias-label-primary, #111);
+    box-shadow: var(--dsw-shadow-lv2, 0 2px 8px rgba(0, 0, 0, 0.18));
     cursor: pointer;
     place-items: center;
-    display: grid;
+    display: grid !important;
   }
 
   .dsh-mobile-theme-fab {

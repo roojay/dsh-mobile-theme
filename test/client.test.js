@@ -265,8 +265,9 @@ test('apply injects the stylesheet exactly once and upgrades the viewport meta',
   const module = loadModule({ document: dom.document, matchMedia: makeMediaQuery(false) })
   const ctx = makeCtx(theme)
 
-  assert.equal(module.inject.length, 1)
+  assert.equal(module.inject.length, 2)
   assert.ok(module.inject.includes('theme'))
+  assert.ok(module.inject.includes('layout'))
   module.apply(ctx)
 
   const tags = dom.styleTags.filter((t) => t.dataset.plugin === 'dsh-mobile-theme')
@@ -280,7 +281,7 @@ test('apply injects the stylesheet exactly once and upgrades the viewport meta',
   assert.ok(content.startsWith('width=device-width'), 'existing viewport directives preserved')
 
   // Version marker: lets a user confirm which bundle is live.
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.5')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.6')
 
   // Second apply (HMR re-activation) must not duplicate the style tag.
   module.apply(ctx)
@@ -667,7 +668,7 @@ test('degrades gracefully when the shell structure no longer verifies', () => {
   assert.equal(dom.frame.getAttribute('data-dsh-mobile-frame'), null, 'no frame mark written')
   assert.equal(dom.col.getAttribute('data-dsh-mobile-sidebar-col'), null, 'no sidebar mark written')
   assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), 'degraded', 'health marker reports degraded')
-  assert.equal(dom.body.children.length, 0, 'no floating button on degraded layout')
+  assert.equal(dom.body.children.length, 2, 'fabs still inject so the hidden rail has an entry')
 
   const clickOn = (target) => {
     for (const l of dom.listeners.filter((l) => l.type === 'click')) l.fn({ target })
@@ -728,13 +729,13 @@ test('discovers the shell structure late (apply before first render)', async () 
   module.apply(makeCtx(theme, { toggleSidebar() { toggles += 1 } }))
 
   assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), 'degraded', 'starts degraded')
-  assert.equal(dom.body.children.length, 0, 'no fab before the slot exists')
+  assert.equal(dom.body.children.length, 2, 'fabs appear with layout even before the slot exists')
 
   // The shell commits after activation: retries must pick the structure up.
   slotReady = true
   await delay(400)
   assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), 'ok', 'recovered after retry')
-  assert.equal(dom.body.children.length, 2, 'fabs appear once the structure is found')
+  assert.equal(dom.body.children.length, 2, 'fabs remain after the structure is found')
 
   const tap = (target) => {
     for (const l of dom.listeners.filter((l) => l.type === 'pointerup')) l.fn({ target })
@@ -755,7 +756,7 @@ test('apply failures are contained (the entry never dies)', () => {
   assert.doesNotThrow(() => module.apply(makeCtx({ runtime: badRuntime }, { toggleSidebar() {} })))
   // The steps before the failure point still applied: css + version marker.
   assert.ok(dom.styleTags.some((t) => t.dataset.plugin === 'dsh-mobile-theme'), 'css injected before the failure')
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.5', 'version marker written')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.6', 'version marker written')
 })
 
 test('inside taps follow the navigation whitelist', async () => {
