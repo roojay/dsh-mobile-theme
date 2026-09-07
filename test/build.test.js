@@ -48,6 +48,8 @@ test('embedded stylesheet keeps the structural and pinned selectors', () => {
     // (concentrated here; their failure mode is cosmetic only).
     '.pI_x6G_handle',
     '.VOzbGW_panel',
+    '[role=\\"dialog\\"][aria-modal=\\"true\\"] > nav',
+    '.VOzbGW_nav.VOzbGW_nav',
     '.uV2eYG_primary',
     '.o3BgMG_inspectButton',
     '.ydkMvW_close',

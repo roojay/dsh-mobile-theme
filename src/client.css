@@ -439,8 +439,12 @@
   /* ── popup surfaces ───────────────────────────────────────────────── */
 
   /* Settings becomes a full-screen sheet with a horizontally scrollable
-     section nav instead of the 188px side column. */
-  .VOzbGW_panel {
+     section nav instead of the 188px side column.
+     Official CSS modules inject when Settings opens (after this tag), so
+     beat `.VOzbGW_nav { flex-direction: column }` with the dialog+nav
+     structure — hashes are a fallback. */
+  [role="dialog"][aria-modal="true"]:has(> nav),
+  .VOzbGW_panel.VOzbGW_panel {
     width: 100%;
     max-width: none;
     height: 100dvh;
@@ -456,48 +460,60 @@
      whole thing overflows, and the panel's overflow: hidden clips the
      tail with no scrollbar. Clamping it hands scrolling to the official
      .VOzbGW_options (flex: 1; min-height: 0; overflow-y: auto). */
-  .VOzbGW_content {
+  [role="dialog"][aria-modal="true"]:has(> nav) > :last-child,
+  .VOzbGW_content.VOzbGW_content {
     min-height: 0;
   }
 
-  .VOzbGW_nav {
+  [role="dialog"][aria-modal="true"] > nav,
+  .VOzbGW_nav.VOzbGW_nav {
     flex: none;
     flex-direction: row;
     align-items: center;
     gap: 4px;
     width: 100%;
+    max-width: none;
     padding: 10px 12px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--dsw-alias-border-l2);
     overflow-x: auto;
     scrollbar-width: none;
   }
 
-  .VOzbGW_nav::-webkit-scrollbar {
+  [role="dialog"][aria-modal="true"] > nav::-webkit-scrollbar,
+  .VOzbGW_nav.VOzbGW_nav::-webkit-scrollbar {
     display: none;
   }
 
-  .VOzbGW_navTitle {
+  [role="dialog"][aria-modal="true"] > nav > :first-child,
+  .VOzbGW_navTitle.VOzbGW_navTitle {
     flex: none;
     padding: 0 8px 0 0;
     font-size: 14px;
   }
 
-  .VOzbGW_navList {
+  [role="dialog"][aria-modal="true"] > nav > :last-child,
+  .VOzbGW_navList.VOzbGW_navList {
+    display: flex;
     flex-direction: row;
+    flex: 1;
+    min-width: 0;
+    gap: 4px;
   }
 
-  .VOzbGW_navCell {
+  [role="dialog"][aria-modal="true"] > nav button,
+  .VOzbGW_navCell.VOzbGW_navCell {
     flex: none;
     height: 40px;
   }
 
-  .VOzbGW_header {
+  .VOzbGW_header.VOzbGW_header {
     height: auto;
     min-height: 54px;
     padding: 12px 12px 8px;
   }
 
-  .VOzbGW_options {
+  .VOzbGW_options.VOzbGW_options {
     padding: 0 16px 16px;
   }
 
