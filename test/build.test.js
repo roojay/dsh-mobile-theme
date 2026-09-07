@@ -27,7 +27,7 @@ test('embedded stylesheet keeps the structural and pinned selectors', () => {
   for (const fragment of [
     '@media (max-width: 767px)',
     '@media (max-width: 900px) and (max-height: 500px)',
-    'grid-template-columns: 56px minmax(0, 1fr) 0px !important',
+    'grid-template-columns: minmax(0, 1fr) 0px 0px !important',
     '.dsh-mobile-theme-fab',
     '.dsh-mobile-theme-settings-fab',
     '[data-dsh-mobile-sidebar-col]:has([role=\\"dialog\\"][aria-modal=\\"true\\"])',

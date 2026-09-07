@@ -42,14 +42,22 @@
     -webkit-touch-callout: none;
   }
 
-  /* ── shell frame: keep the official 56px icon rail, overlay when open ── */
-  /* 0.1.2 auto-collapses below 1024px into a 56px rail whose footer is the
-     settings trigger. Hiding that rail also hides Settings. Stay inside
-     the safe area for landscape notches. */
+  /* ── shell frame: true full-width center, overlay drawers ──────────── */
+  /* Official 0.1.2 still reserves a 56px icon rail below 1024px. On phones
+     that rail steals conversation width; hide it and use body-level ☰ /
+     settings buttons instead. */
   [data-dsh-mobile-frame] {
-    grid-template-columns: 56px minmax(0, 1fr) 0px !important;
+    grid-template-columns: minmax(0, 1fr) 0px 0px !important;
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  [data-dsh-mobile-center-col] {
+    grid-column: 1;
+  }
+
+  [data-dsh-mobile-details-col] {
+    grid-column: 2;
   }
 
   /* No column drag handles on touch input. */
@@ -57,24 +65,25 @@
     display: none;
   }
 
-  /* Collapsed: official rail stays in flow (settings gear at the foot). */
+  /* Sidebar: fully off-screen; expands as an overlay drawer. */
   [data-dsh-mobile-sidebar-col] {
-    position: relative;
-    z-index: 40;
-    visibility: visible;
-    transform: none;
-    height: 100%;
-  }
-
-  /* Expanded: overlay drawer over the conversation; the 56px track stays
-     so the chat does not jump. */
-  [data-dsh-mobile-frame]:not([data-sidebar-collapsed]) [data-dsh-mobile-sidebar-col] {
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
+    height: 100%;
     width: 320px;
     width: min(320px, 88vw);
+    z-index: 40;
+    visibility: hidden;
+    transform: translateX(-101%);
+    transition:
+      transform 0.24s var(--ds-ease-in-out),
+      box-shadow 0.24s var(--ds-ease-in-out),
+      visibility 0s 0.24s;
+  }
+
+  [data-dsh-mobile-frame]:not([data-sidebar-collapsed]) [data-dsh-mobile-sidebar-col] {
     visibility: visible;
     transform: none;
     box-shadow: var(--dsw-shadow-lv3);
@@ -159,8 +168,10 @@
     padding: 8px 12px 0;
   }
 
+  /* Reserve the left slot for ☰ + settings FABs. */
   .wSkVaW_titleRow {
     min-height: 40px;
+    padding-left: 96px;
   }
 
   .wSkVaW_titleCluster {
@@ -588,10 +599,50 @@
 }
 
 @media (max-width: 767px), (max-width: 900px) and (max-height: 500px) {
-  /* 0.1.2's collapsed rail already owns the panel toggle and Settings. */
   .dsh-mobile-theme-fab,
   .dsh-mobile-theme-settings-fab {
-    display: none;
+    position: fixed;
+    z-index: 60;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--dsw-alias-border-l2);
+    border-radius: 12px;
+    background: var(--dsw-alias-button-floating-fill);
+    color: var(--dsw-alias-label-primary);
+    box-shadow: var(--dsw-shadow-lv2);
+    cursor: pointer;
+    place-items: center;
+    display: grid;
+  }
+
+  .dsh-mobile-theme-fab {
+    left: calc(12px + env(safe-area-inset-left, 0px));
+  }
+
+  .dsh-mobile-theme-settings-fab {
+    left: calc(56px + env(safe-area-inset-left, 0px));
+    right: auto;
+  }
+
+  .dsh-mobile-theme-fab:hover,
+  .dsh-mobile-theme-settings-fab:hover {
+    background: var(--dsw-alias-button-floating-hover);
+  }
+
+  .dsh-mobile-theme-fab:focus-visible,
+  .dsh-mobile-theme-settings-fab:focus-visible {
+    outline: 2px solid var(--dsw-alias-state-business-primary);
+    outline-offset: 2px;
+  }
+
+  .dsh-mobile-theme-fab svg,
+  .dsh-mobile-theme-settings-fab svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    pointer-events: none;
   }
 }
 

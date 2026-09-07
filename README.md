@@ -14,9 +14,9 @@ No React code, no host-plane services, no settings schema: the layout work is on
 
 | Surface | Desktop behavior | Mobile behavior |
 |---|---|---|
-| Sidebar | grid column, 264–420px | **collapsed: official 56px icon rail stays** (Settings is the rail-foot gear). Expanded: overlay drawer (`min(320px, 88vw)`) over a masked backdrop; taps on **navigation rows** close it; search, settings, tools keep it open |
+| Sidebar | grid column, 264–420px | fully hidden; a ☰ floating button (top-left) opens it as an **overlay drawer** (`min(320px, 88vw)`); a gear next to ☰ opens Settings; taps on **navigation rows** close it; search, settings, tools keep it open |
 | Conversation | center column | **true full width** — the grid is overridden to a single `minmax(0, 1fr)` track, no rail is reserved |
-| Header | fixed title row | compact title cluster, horizontally scrollable utilities (the 56px rail owns toggle + Settings) |
+| Header | fixed title row | left slot reserved for ☰ and settings; compact title cluster, horizontally scrollable utilities |
 | Details panel | third grid column, 300–520px | right-side overlay drawer; the chat keeps the full width behind it |
 | Column drag handles | visible | hidden (no col-resize on touch) |
 | Composer | 34px send button, 16px clearance | 40px touch targets, tighter clearance, single-line bottom bar (the left tools group shrinks flexibly, selects truncate — no scroll container, which would clip the permission popover; the send button keeps its place), `env(safe-area-inset-bottom)` padding so the input bar clears the home indicator |
