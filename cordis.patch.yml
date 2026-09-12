@@ -6,10 +6,9 @@
 # package is a no-op apply — the host Loader still gives this entry a
 # fiber, which the web plugin scan requires before it composes the row.
 #
-# No inject, no config: the browser half waits on the theme service
-# through its own exports.inject, and reads the layout service
-# opportunistically with ctx.get (the mobile drawer click-to-close is
-# an enhancement, never a hard dependency).
+# The browser entry declares theme/layout services; its package metadata
+# declares the corresponding client graph dependencies. Right-sidebar
+# actions are read opportunistically from their owning service.
 - insert:
     - id: mobile-theme
       name: dsh-mobile-theme

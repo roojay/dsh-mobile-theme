@@ -14,6 +14,24 @@ permissions:
   id-token: write
 
 jobs:
+  compatibility:
+    name: DSH 0.1.5-rc.2 browser compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+      - name: Install official DSH and browser test runtime
+        run: npm install --ignore-scripts --no-package-lock --no-save @deepseek-ai/dsh@0.1.5-rc.2 playwright@1.62.1 pnpm@11.19.0
+      - run: npm run build
+      - run: npm run check:upstream
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+
   ci:
     name: Test and pack
     runs-on: ubuntu-latest
@@ -56,8 +74,8 @@ jobs:
               if (!inject || !inject.includes(id)) {
                 throw new Error("missing dsh.client.inject " + id)
               }
-              if (!pkg.peerDependencies || pkg.peerDependencies[id] !== "0.1.1-rc.2") {
-                throw new Error("peer dependency must pin " + id + " to DSH 0.1.1-rc.2")
+              if (!pkg.peerDependencies || pkg.peerDependencies[id] !== "0.1.5-rc.2") {
+                throw new Error("peer dependency must pin " + id + " to DSH 0.1.5-rc.2")
               }
             }
             if (!pkg.exports || pkg.exports["./client"] !== "./lib/client.js") {

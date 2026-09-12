@@ -1,7 +1,7 @@
 /**
  * Browser half of dsh-mobile-theme (module-loader bundle template).
  *
- * Built by scripts/build-client.mjs, which substitutes the two
+ * Built by scripts/build-client.mjs, which substitutes the four
  * placeholders with the JSON-escaped stylesheet and token table, and
  * writes the result to lib/client.js (the `exports["./client"]` artifact
  * the client-modules node half serves at /plugins/dsh-mobile-theme/client.js).
@@ -24,14 +24,9 @@
  *      data-dsh-mobile-* attributes the stylesheet keys off — layout CSS
  *      never pins hashed class names, and discovery failure degrades
  *      gracefully (rules inert, official layout intact, body marker set).
- *   6. Drawer behavior + ☰ / settings floating buttons: with the rail
- *      fully hidden on phones, two body-level buttons (outside React's
- *      tree) are the entry points — ☰ toggles the drawer, the gear clicks
- *      the official `sidebar.settings` trigger (`aria-haspopup="dialog"`).
- *      Backdrop clicks and Escape close the expanded sidebar via
- *      ctx.layout (read opportunistically with ctx.get — the plugin never
- *      hard-depends on ui-layout), and a tap inside the drawer closes it
- *      after React handles the tap.
+ *   6. Drawer behavior: one body-level menu button uses ctx.layout;
+ *      right-preview close uses its owner, ctx.sidebarRight. Settings
+ *      remains the native trigger in the sidebar footer.
  *   7. Accessibility + native navigation: the FAB mirrors aria-expanded
  *      through a MutationObserver on the frame's data attributes; opening
  *      a drawer pushes a marked history entry and the Android back
@@ -55,6 +50,7 @@ window.__ModuleLoader__.load({
     var VERSION = __DSH_MOBILE_THEME_VERSION__
 
     var CSS = __DSH_MOBILE_THEME_CSS__
+    var STYLE_MODULES = __DSH_MOBILE_THEME_SELECTORS__
     var TOKENS = __DSH_MOBILE_THEME_TOKENS__
 
     /** Version marker: lets a user confirm which bundle is actually live
@@ -64,14 +60,57 @@ window.__ModuleLoader__.load({
       document.body.setAttribute('data-dsh-mobile-theme', VERSION)
     }
 
-    function injectCss() {
+    // Resolve cosmetic aliases from the owning package's live stylesheet.
+    // A missing/renamed local becomes an inert class, never a broad suffix match.
+    var selectors = Object.create(null)
+    function resolveSelectors(text) {
+      return text.replace(/\.dsh-([A-Za-z0-9]+)_([A-Za-z0-9_]+)/g, function (alias) {
+        return selectors[alias] || '.dsh-mobile-unavailable'
+      })
+    }
+
+    function injectCss(ctx) {
       if (typeof document === 'undefined') return
-      if (document.querySelector('style[data-plugin-css="' + CSS_TAG_ID + '"]') !== null) return
-      var tag = document.createElement('style')
-      tag.dataset.plugin = PACKAGE
-      tag.dataset.pluginCss = CSS_TAG_ID
-      tag.textContent = CSS
-      document.head.appendChild(tag)
+      ctx.effect(function () {
+        var tag = document.querySelector('style[data-plugin-css="' + CSS_TAG_ID + '"]')
+        if (tag === null) {
+          tag = document.createElement('style')
+          tag.dataset.plugin = PACKAGE
+          tag.dataset.pluginCss = CSS_TAG_ID
+          document.head.appendChild(tag)
+        }
+        function refresh() {
+          selectors = Object.create(null)
+          for (var alias in STYLE_MODULES) {
+            var sheet = document.querySelector('style[data-plugin-css="' + STYLE_MODULES[alias] + '"]')
+            if (sheet === null) continue
+            var pattern = /\.([_a-zA-Z][\w-]*_([a-zA-Z][\w]*))(?![\w-])/g
+            var match
+            while ((match = pattern.exec(sheet.textContent)) !== null) {
+              selectors['.dsh-' + alias + '_' + match[2]] = '.' + match[1]
+            }
+          }
+          var css = resolveSelectors(CSS)
+          if (tag.textContent !== css) tag.textContent = css
+          // Hosts can load cosmetic packages after this plugin. Equal-specificity
+          // overrides must remain after their live styles, including after HMR.
+          if (document.head.lastElementChild && document.head.lastElementChild !== tag) document.head.appendChild(tag)
+        }
+        refresh()
+        var observer = typeof MutationObserver === 'function' ? new MutationObserver(refresh) : null
+        if (observer !== null) observer.observe(document.head, { childList: true, subtree: true, characterData: true })
+        return function () {
+          if (observer !== null) observer.disconnect()
+          if (tag.parentNode !== null) tag.parentNode.removeChild(tag)
+          selectors = Object.create(null)
+        }
+      }, PACKAGE + ': live stylesheet aliases')
+    }
+
+    function editable(el) {
+      if (el === null || typeof el.tagName !== 'string') return false
+      var tag = el.tagName.toUpperCase()
+      return tag === 'TEXTAREA' || tag === 'INPUT' || el.isContentEditable === true
     }
 
     function upgradeViewportMeta() {
@@ -101,7 +140,7 @@ window.__ModuleLoader__.load({
       var snapshot = theme.getTheme()
       var themes = snapshot !== null && snapshot.themes !== void 0 ? snapshot.themes : []
       for (var i = 0; i < themes.length; i++) if (themes[i].id === MOBILE_THEME_ID) return
-      theme.register({ id: MOBILE_THEME_ID, colorScheme: 'dark', tokens: mobileThemeTokens() })
+      return theme.register({ id: MOBILE_THEME_ID, colorScheme: 'dark', tokens: mobileThemeTokens() })
     }
 
     function apply(ctx) {
@@ -118,10 +157,10 @@ window.__ModuleLoader__.load({
     }
 
     function safeApply(ctx) {
-      injectCss()
+      injectCss(ctx)
       upgradeViewportMeta()
       markVersion()
-      registerTheme(ctx.theme)
+      ctx.effect(function () { return registerTheme(ctx.theme) }, PACKAGE + ': registered theme')
 
       var mq = typeof matchMedia === 'function' ? matchMedia(MOBILE_MQ) : null
 
@@ -142,16 +181,16 @@ window.__ModuleLoader__.load({
         }
       }
       syncLayer()
-      if (mq !== null) {
+      {
         ctx.effect(function () {
           function onChange() {
             syncLayer()
           }
-          if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange)
-          else if (typeof mq.addListener === 'function') mq.addListener(onChange)
+          if (mq !== null && typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange)
+          else if (mq !== null && typeof mq.addListener === 'function') mq.addListener(onChange)
           return function () {
-            if (typeof mq.removeEventListener === 'function') mq.removeEventListener('change', onChange)
-            else if (typeof mq.removeListener === 'function') mq.removeListener(onChange)
+            if (mq !== null && typeof mq.removeEventListener === 'function') mq.removeEventListener('change', onChange)
+            else if (mq !== null && typeof mq.removeListener === 'function') mq.removeListener(onChange)
             // Fiber teardown also retracts the active layer — an orphaned
             // override must not outlive the plugin that stacked it.
             if (disposeLayer !== null) {
@@ -190,22 +229,15 @@ window.__ModuleLoader__.load({
             if (typeof document === 'undefined') return false
             var el = document.activeElement
             if (el === null || typeof el.tagName !== 'string') return false
-            var tag = el.tagName.toUpperCase()
-            return tag === 'TEXTAREA' || tag === 'INPUT'
-          }
-          function nudgeScroll() {
-            try {
-              var el = document.querySelector('.Md3f7G_scroll')
-              if (el !== null && typeof el.scrollHeight === 'number') el.scrollTop = el.scrollHeight
-            } catch (err) {}
+            return editable(el)
           }
           function applyInset(value) {
+            var scroller = document.querySelector('[data-conversation-scroll]')
+            var stick = scroller !== null && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80
             if (value === null) rootEl.style.removeProperty('--dsh-mobile-keyboard-inset')
             else rootEl.style.setProperty('--dsh-mobile-keyboard-inset', value + 'px')
-            // Nudge only on open/close transitions (never on pan
-            // adjustments while the keyboard stays open — the user is
-            // scrolling by hand then).
-            if (value !== lastApplied && (value === null || lastApplied === null)) nudgeScroll()
+            // Decide from the old viewport height; changing padding can shrink it.
+            if (stick && value !== lastApplied && (value === null || lastApplied === null)) scroller.scrollTop = scroller.scrollHeight
             lastApplied = value
           }
           function syncKeyboard() {
@@ -213,7 +245,7 @@ window.__ModuleLoader__.load({
               applyInset(null)
               return
             }
-            if (!keyboardContextActive()) {
+            if (!keyboardContextActive() || (vv.scale && Math.abs(vv.scale - 1) > 0.01)) {
               applyInset(null)
               return
             }
@@ -250,28 +282,34 @@ window.__ModuleLoader__.load({
       // re-hash cannot break it; if discovery fails, no marks are written
       // and every layout rule stays inert — the app keeps its official
       // behavior instead of a half-applied phone layout.
-      function markStructure() {
-        if (typeof document === 'undefined') return null
+      var markedStructure = null
+      var markNames = { frame: 'frame', sidebarCol: 'sidebar-col', centerCol: 'center-col', rightbarCol: 'rightbar-col' }
+      function clearStructure() {
+        if (markedStructure === null) return
+        for (var key in markNames) markedStructure[key].removeAttribute('data-dsh-mobile-' + markNames[key])
+        markedStructure = null
+      }
+      function discoverStructure() {
         var slot = document.querySelector('[data-slot="sidebar"]')
-        if (slot === null || slot.parentElement === null || slot.parentElement.parentElement === null) return null
+        if (slot === null || slot.parentElement === null) return null
         var sidebarCol = slot.parentElement
         var frame = sidebarCol.parentElement
-        // Self-check 1: the frame is the grid the app drives with an
-        // inline gridTemplateColumns (React writes it every render).
-        if (frame.style === null || typeof frame.style === 'undefined' || typeof frame.style.gridTemplateColumns !== 'string') return null
-        // DOM order contract: sidebar | center | details | shell overlay.
+        if (frame === null || !frame.style || typeof frame.style.gridTemplateColumns !== 'string' || !/minmax\(\s*0(?:px)?\s*,\s*1fr\s*\)/.test(frame.style.gridTemplateColumns)) return null
         var centerCol = sidebarCol.nextElementSibling
-        if (centerCol === null) return null
-        var detailsCol = centerCol.nextElementSibling
-        // Self-check 2: the third column must not be the shell overlay
-        // node (data-shell-overlay marks it); a broken chain marks nothing.
-        if (detailsCol === null || (typeof detailsCol.hasAttribute === 'function' && detailsCol.hasAttribute('data-shell-overlay'))) detailsCol = null
-
-        frame.setAttribute('data-dsh-mobile-frame', '')
-        sidebarCol.setAttribute('data-dsh-mobile-sidebar-col', '')
-        centerCol.setAttribute('data-dsh-mobile-center-col', '')
-        if (detailsCol !== null) detailsCol.setAttribute('data-dsh-mobile-details-col', '')
-        return { frame, sidebarCol, centerCol, detailsCol, slot }
+        var rightbarCol = centerCol === null ? null : centerCol.nextElementSibling
+        if (rightbarCol === null || !rightbarCol.querySelector('[data-slot="rightbar"]') || !centerCol.querySelector('[data-slot="main"]')) return null
+        return { frame: frame, sidebarCol: sidebarCol, centerCol: centerCol, rightbarCol: rightbarCol, slot: slot }
+      }
+      function markStructure() {
+        if (typeof document === 'undefined') return null
+        var next = discoverStructure()
+        if (next === null || markedStructure === null || next.frame !== markedStructure.frame || next.sidebarCol !== markedStructure.sidebarCol || next.centerCol !== markedStructure.centerCol || next.rightbarCol !== markedStructure.rightbarCol) {
+          clearStructure()
+          markedStructure = next
+          if (next !== null) for (var key in markNames) next[key].setAttribute('data-dsh-mobile-' + markNames[key], '')
+        }
+        if (document.body) document.body.setAttribute('data-dsh-mobile-layout', next === null ? 'degraded' : 'ok')
+        return next
       }
 
       // Independent structural-marking effect (no service dependency):
@@ -308,6 +346,11 @@ window.__ModuleLoader__.load({
           tryMark()
           return function () {
             if (timer !== null) clearTimeout(timer)
+            clearStructure()
+            if (document.body) {
+              document.body.removeAttribute('data-dsh-mobile-layout')
+              document.body.removeAttribute('data-dsh-mobile-theme')
+            }
           }
         }, PACKAGE + ': structural marks')
       }
@@ -349,9 +392,10 @@ window.__ModuleLoader__.load({
           function onFocusIn(e) {
             if (!phoneLayout()) return
             var t = e && e.target !== void 0 ? e.target : null
-            if (t === null || typeof t.tagName !== 'string' || t.tagName.toUpperCase() !== 'TEXTAREA') return
+            if (t === null || !editable(t)) return
             var col = document.querySelector('[data-dsh-mobile-center-col]')
             if (col === null || typeof col.contains !== 'function' || !col.contains(t)) return
+            if (typeof t.matches === 'function' && !t.matches('[data-composer-input], textarea')) return
             // A real tap on the composer is always allowed.
             if (Date.now() - lastIntentAt <= 500) return
             var initialMount = pageTouchedAt === 0
@@ -397,17 +441,18 @@ window.__ModuleLoader__.load({
               clearTimer()
               return
             }
+            if (t.closest('button, a, input, textarea, [contenteditable], [role="button"]') !== null) return
             // Action buttons keep their own behavior.
-            if (t.closest('.p-xYUq_actions') !== null) return
+            if (t.closest(resolveSelectors('.dsh-MessageIconActions_actions')) !== null) return
             // User messages have nothing to reveal (their send time is
             // always visible): never mark them — just collapse any other
             // revealed row, so the mark can never clip the user time.
-            if (t.closest('.gdEzaW_userRow') !== null) {
+            if (t.closest(resolveSelectors('.dsh-MessageItem_userRow')) !== null) {
               hideAll()
               clearTimer()
               return
             }
-            var item = t.closest('.Md3f7G_flowItem')
+            var item = t.closest('[data-chat-flow-key]')
             if (item === null) {
               hideAll()
               clearTimer()
@@ -473,6 +518,7 @@ window.__ModuleLoader__.load({
 
         function injectFabs(layoutHandle) {
           var fab = null
+          var languageObserver = null
           function appIsZh() {
             var docLang = typeof document.documentElement === 'object' && document.documentElement !== null
               ? (document.documentElement.lang || document.documentElement.getAttribute('lang') || '')
@@ -489,8 +535,15 @@ window.__ModuleLoader__.load({
             fab.addEventListener('click', function () { layoutHandle.toggleSidebar() })
             document.body.appendChild(fab)
           }
+          if (fab !== null && typeof MutationObserver === 'function') {
+            languageObserver = new MutationObserver(function () {
+              fab.setAttribute('aria-label', appIsZh() ? '切换侧栏' : 'Toggle sidebar')
+            })
+            languageObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
+          }
           drawerFab = fab
           return function () {
+            if (languageObserver !== null) languageObserver.disconnect()
             if (fab !== null && fab.parentNode !== null) fab.parentNode.removeChild(fab)
             drawerFab = null
           }
@@ -514,14 +567,23 @@ window.__ModuleLoader__.load({
 
           var historyApi = win !== null && win.history &&
             typeof win.history.pushState === 'function' && typeof win.history.back === 'function'
-          var pushed = null // 'sidebar' | 'details' | null — our marked entry
+          var existingMarker = historyApi && win.history.state ? win.history.state.dshMobileTheme : null
+          var pushed = existingMarker === 'sidebar' || existingMarker === 'rightbar' ? existingMarker : null
 
           function expanded() {
             return frame !== null && !frame.hasAttribute('data-sidebar-collapsed')
           }
 
-          function detailsOpen() {
-            return frame !== null && !frame.hasAttribute('data-details-collapsed')
+          function rightbarOpen() {
+            return document.querySelector('[data-sidebar-right-panel][data-sidebar-right-open]') !== null
+          }
+
+          function closeRightbar() {
+            if (!rightbarOpen()) return
+            // closeRightbar on layout only reports geometry; the owner records
+            // expansion and must perform the actual close.
+            var service = ctx.get('sidebarRight')
+            if (service && service.isExpanded() && typeof service.toggleExpanded === 'function') service.toggleExpanded()
           }
 
           // Drawer mode: true exactly when OUR overlay CSS is active, read
@@ -548,6 +610,7 @@ window.__ModuleLoader__.load({
           // Shared dismiss logic. `now` marks the action timestamp so the
           // companion click event (fired right after pointerup) is deduped.
           var lastTapActionAt = 0
+          var closeTimer = null
 
           // Official overlay semantics (verified in the shell sources):
           // every modal Dialog renders aria-modal="true"; every popover /
@@ -583,10 +646,12 @@ window.__ModuleLoader__.load({
               // keyboard guard (session switches refocus the composer).
               recentDrawerTapAt = Date.now()
               var navRow = t !== null && typeof t.closest === 'function'
-                ? t.closest('.YDXeBa_sessionRow, .YDXeBa_searchResultRow, .hHd-Xa_newSession')
+                ? t.closest(resolveSelectors('.dsh-Rows_sessionRow, .dsh-Rows_searchResultRow, .dsh-SidebarRoot_newSession, .dsh-SidebarRoot_panelRow'))
                 : null
               if (navRow === null) return
-              setTimeout(function () {
+              if (closeTimer !== null) clearTimeout(closeTimer)
+              closeTimer = setTimeout(function () {
+                closeTimer = null
                 if (overlayOpen()) return
                 closeDrawer()
               }, 250)
@@ -617,7 +682,9 @@ window.__ModuleLoader__.load({
           }
 
           function onKey(e) {
-            if (e.key === 'Escape') closeDrawer()
+            if (e.key !== 'Escape' || overlayOpen()) return
+            if (expanded()) closeDrawer()
+            else if (drawerMode()) closeRightbar()
           }
 
           // Android back gesture. popstate carries the state of the entry
@@ -630,20 +697,20 @@ window.__ModuleLoader__.load({
             var marker = e && e.state ? e.state.dshMobileTheme : null
             if (marker === 'sidebar') {
               // An entry above the sidebar was popped; if that was the
-              // details drawer's entry, close the details overlay.
-              if (pushed === 'details' && detailsOpen() && typeof layout.closeDetails === 'function') layout.closeDetails()
+              // rightbar's entry, close the right preview.
+              if (pushed === 'rightbar' && rightbarOpen()) closeRightbar()
               pushed = 'sidebar'
               return
             }
-            if (marker === 'details') return
+            if (marker === 'rightbar') { pushed = 'rightbar'; return }
             // Navigated past our drawer entry: close what we pushed.
             var which = pushed
             pushed = null
             if (which === 'sidebar') {
               if (!drawerMode()) return
               if (expanded()) layout.toggleSidebar()
-            } else if (which === 'details') {
-              if (detailsOpen() && typeof layout.closeDetails === 'function') layout.closeDetails()
+            } else if (which === 'rightbar') {
+              if (rightbarOpen()) closeRightbar()
             }
           }
 
@@ -652,31 +719,24 @@ window.__ModuleLoader__.load({
           if (frame !== null && typeof MutationObserver === 'function') {
             observer = new MutationObserver(function () {
               var sidebarOpen = expanded()
-              var detailsOpenNow = detailsOpen()
+              var rightbarOpenNow = rightbarOpen()
               if (drawerFab !== null) drawerFab.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false')
               if (!historyApi) return
 
-              if (drawerMode()) {
-                if (sidebarOpen && pushed === null) {
-                  win.history.pushState({ dshMobileTheme: 'sidebar' }, '')
-                  pushed = 'sidebar'
-                } else if (detailsOpenNow && pushed === null) {
-                  win.history.pushState({ dshMobileTheme: 'details' }, '')
-                  pushed = 'details'
-                }
-              }
-              // UI-driven closes consume our entry (a back-navigation
-              // already cleared `pushed` in onPopState, so never double).
-              if (!sidebarOpen && pushed === 'sidebar') {
+              var current = drawerMode() ? (sidebarOpen ? 'sidebar' : rightbarOpenNow ? 'rightbar' : null) : null
+              var owned = pushed !== null && win.history.state && win.history.state.dshMobileTheme === pushed
+              if (current !== null && pushed === null) {
+                win.history.pushState(Object.assign({}, win.history.state, { dshMobileTheme: current }), '')
+                pushed = current
+              } else if (current !== null && current !== pushed && owned) {
+                win.history.replaceState(Object.assign({}, win.history.state, { dshMobileTheme: current }), '')
+                pushed = current
+              } else if (current === null && pushed !== null) {
                 pushed = null
-                win.history.back()
-              }
-              if (!detailsOpenNow && pushed === 'details') {
-                pushed = null
-                win.history.back()
+                if (owned) win.history.back()
               }
             })
-            observer.observe(frame, { attributes: true, attributeFilter: ['data-sidebar-collapsed', 'data-details-collapsed'] })
+            observer.observe(frame, { attributes: true, childList: true, subtree: true, attributeFilter: ['data-sidebar-collapsed', 'data-sidebar-right-open'] })
           }
 
           document.addEventListener('pointerup', onPointerUp, true)
@@ -684,25 +744,25 @@ window.__ModuleLoader__.load({
           document.addEventListener('keydown', onKey, true)
           if (win !== null && historyApi) win.addEventListener('popstate', onPopState)
 
-          // Re-mark on child-list churn: if an upstream change unmounts and
-          // remounts a column (e.g. a lazy details panel), the attributes
-          // are re-applied and the captured references refreshed; if the
-          // structure no longer verifies, the old marks stay and the rules
-          // keep working off the surviving nodes.
+          // Follow replaced shell roots and retract stale layout marks.
           var remarker = null
           if (frame !== null && typeof MutationObserver === 'function') {
             remarker = new MutationObserver(function () {
               var again = markStructure()
-              if (again !== null) {
-                frame = again.frame
-                slot = again.slot
-                sidebarCol = again.sidebarCol
+              var oldFrame = frame
+              frame = again === null ? null : again.frame
+              slot = again === null ? null : again.slot
+              sidebarCol = again === null ? null : again.sidebarCol
+              if (observer !== null && oldFrame !== frame) {
+                observer.disconnect()
+                if (frame !== null) observer.observe(frame, { attributes: true, childList: true, subtree: true, attributeFilter: ['data-sidebar-collapsed', 'data-sidebar-right-open'] })
               }
             })
-            remarker.observe(frame, { childList: true, subtree: true })
+            remarker.observe(document.body, { childList: true, subtree: true })
           }
 
           return function () {
+            if (closeTimer !== null) clearTimeout(closeTimer)
             document.removeEventListener('pointerup', onPointerUp, true)
             document.removeEventListener('click', onClick, true)
             document.removeEventListener('keydown', onKey, true)

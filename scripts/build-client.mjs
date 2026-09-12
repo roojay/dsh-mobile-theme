@@ -13,10 +13,12 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
+const SELECTORS_PLACEHOLDER = '__DSH_MOBILE_THEME_SELECTORS__'
 const CSS_PLACEHOLDER = '__DSH_MOBILE_THEME_CSS__'
 const TOKENS_PLACEHOLDER = '__DSH_MOBILE_THEME_TOKENS__'
 const VERSION_PLACEHOLDER = '__DSH_MOBILE_THEME_VERSION__'
 
+const selectors = JSON.parse(readFileSync(resolve(root, 'src/selectors.json'), 'utf8'))
 const css = readFileSync(resolve(root, 'src/client.css'), 'utf8')
 const template = readFileSync(resolve(root, 'src/client.template.js'), 'utf8')
 const tokens = JSON.parse(readFileSync(resolve(root, 'src/tokens.json'), 'utf8'))
@@ -38,12 +40,13 @@ for (const [name, modes] of Object.entries(tokens)) {
   }
 }
 
-if (!template.includes(CSS_PLACEHOLDER) || !template.includes(TOKENS_PLACEHOLDER) || !template.includes(VERSION_PLACEHOLDER)) {
+if (!template.includes(CSS_PLACEHOLDER) || !template.includes(TOKENS_PLACEHOLDER) || !template.includes(VERSION_PLACEHOLDER) || !template.includes(SELECTORS_PLACEHOLDER)) {
   throw new Error('client template is missing a build placeholder')
 }
 
 const bundle = template
-  .replace(CSS_PLACEHOLDER, JSON.stringify(css))
+  .replace(CSS_PLACEHOLDER, () => JSON.stringify(css))
+  .replace(SELECTORS_PLACEHOLDER, () => JSON.stringify(selectors, null, 2))
   .replace(TOKENS_PLACEHOLDER, JSON.stringify(tokens, null, 2))
   .replace(VERSION_PLACEHOLDER, JSON.stringify(version))
 
