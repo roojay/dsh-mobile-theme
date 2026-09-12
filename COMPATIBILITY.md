@@ -29,7 +29,7 @@ The old stylesheet's frozen ChatView/MessageItem/MessageIconActions hashes no lo
 
 ```sh
 npm test
-npm install --ignore-scripts --no-package-lock --no-save @deepseek-ai/dsh@0.1.5-rc.2 playwright@1.62.1
+npm install --ignore-scripts --no-package-lock --no-save @deepseek-ai/dsh@0.1.5-rc.2 playwright@1.62.1 pnpm@11.19.0
 npm run check:upstream
 npx playwright install chromium
 npm run test:browser

@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 24
       - name: Install official DSH and browser test runtime
-        run: npm install --ignore-scripts --no-package-lock --no-save @deepseek-ai/dsh@0.1.5-rc.2 playwright@1.62.1
+        run: npm install --ignore-scripts --no-package-lock --no-save @deepseek-ai/dsh@0.1.5-rc.2 playwright@1.62.1 pnpm@11.19.0
       - run: npm run build
       - run: npm run check:upstream
       - run: npx playwright install --with-deps chromium
