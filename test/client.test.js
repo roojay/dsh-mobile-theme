@@ -24,6 +24,8 @@ function makeDom() {
       hasAttribute(k) { return k in this.attrs },
       getAttribute(k) { return k in this.attrs ? this.attrs[k] : null },
       contains(node) { return node === this },
+      removeAttribute(k) { delete this.attrs[k] },
+      querySelector() { return {} },
       ...extra
     }
   }
@@ -34,7 +36,7 @@ function makeDom() {
   const col = stateEl() // sidebar column
   const centerCol = stateEl()
   const detailsCol = stateEl()
-  const frame = stateEl({ style: { gridTemplateColumns: '56px minmax(0, 1fr) 0px' } })
+  const frame = stateEl({ style: { gridTemplateColumns: '56px minmax(0px, 1fr) 0px' } })
   slot.parentElement = col
   col.parentElement = frame
   col.nextElementSibling = centerCol
@@ -49,8 +51,13 @@ function makeDom() {
   }
 
   const styleTags = []
+  const aliases = JSON.parse(readFileSync(resolve(root, 'src/selectors.json'), 'utf8'))
+  for (const [alias, tag] of Object.entries(aliases)) {
+    const locals = [...new Set([...bundle.matchAll(/\.dsh-([A-Za-z0-9]+)_([A-Za-z0-9_]+)/g)].filter(m => m[1] === alias).map(m => m[2]))]
+    styleTags.push({dataset: {pluginCss: tag}, textContent: locals.map(local => '.host' + alias + '_' + local + '{}').join('')})
+  }
   const markedEls = []
-  const scroller = { scrollHeight: 1000, scrollTop: 0 }
+  const scroller = { scrollHeight: 1000, clientHeight: 950, scrollTop: 0 }
 
   function makeElement(tagName) {
     const elListeners = []
@@ -66,6 +73,7 @@ function makeDom() {
       children: [],
       setAttribute(k, v) { this.attrs[k] = v },
       getAttribute(k) { return k in this.attrs ? this.attrs[k] : null },
+      removeAttribute(k) { delete this.attrs[k] },
       addEventListener(type, fn) { elListeners.push({ type, fn }) },
       dispatch(type, ev) { for (const l of elListeners.filter((x) => x.type === type)) l.fn(ev ?? {}) },
       appendChild(child) { child.parentNode = this; this.children.push(child); return child },
@@ -90,7 +98,8 @@ function makeDom() {
     documentElement: { style: rootStyle, lang: '', getAttribute(k) { return k === 'lang' ? this.lang : null } },
     activeElement: null,
     head: {
-      appendChild(tag) { head.children.push(tag); return tag }
+      appendChild(tag) { head.children.push(tag); tag.parentNode = this; return tag },
+      removeChild(tag) { head.children = head.children.filter(t => t !== tag); tag.parentNode = null }
     },
     createElement(tagName) {
       const tag = makeElement(tagName)
@@ -100,11 +109,12 @@ function makeDom() {
     querySelector(selector) {
       if (selector === 'meta[name="viewport"]') return viewport
       if (selector === '[data-slot="sidebar"]') return slot
+      if (selector === '[data-sidebar-right-panel][data-sidebar-right-open]') return document.rightbarOpen ? detailsCol : null
       if (selector === '[data-slot="sidebar"] button[aria-haspopup="dialog"]') return settingsTrigger
       if (selector === '[data-dsh-mobile-sidebar-col]') return col
       if (selector === '[data-dsh-mobile-center-col]') return centerCol
-      if (selector === '[data-dsh-mobile-details-col]') return detailsCol
-      if (selector === '.Md3f7G_scroll') return scroller
+      if (selector === '[data-dsh-mobile-rightbar-col]') return detailsCol
+      if (selector === '[data-conversation-scroll]') return scroller
       if (selector.startsWith('style[data-plugin-css=')) {
         const wanted = selector.slice(selector.indexOf('"') + 1, selector.lastIndexOf('"'))
         return styleTags.find((t) => t.dataset.pluginCss === wanted) ?? null
@@ -153,6 +163,8 @@ function makeWin() {
     emit(type, ev) { for (const l of listeners.filter((x) => x.type === type)) l.fn(ev) },
     history: {
       stack: [],
+      get state() { return this.stack[this.stack.length - 1] ?? null },
+      replaceState(state) { this.stack[this.stack.length - 1] = state },
       pushState(state) { this.stack.push(state) },
       back() {
         this.stack.pop()
@@ -246,6 +258,7 @@ function makeCtx(theme, layout = undefined) {
       return disposer
     },
     get(name) {
+      if (name === 'sidebarRight') return layout?.sidebarRight
       if (name === 'layout') {
         if (layout === undefined) throw new Error('service not provided')
         return layout
@@ -258,6 +271,128 @@ function makeCtx(theme, layout = undefined) {
 }
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms))
+
+test('live styles follow upstream rehashes and late-loaded stylesheets', () => {
+  const dom = makeDom()
+  const module = loadModule({ document: dom.document, matchMedia: () => makeMediaQuery(true) })
+  const ctx = makeCtx(makeTheme(), { toggleSidebar() {} })
+  module.apply(ctx)
+  const style = dom.styleTags.find(t => t.dataset.plugin === 'dsh-mobile-theme')
+  const upstream = dom.styleTags.find(t => t.dataset.pluginCss.endsWith('/InputBar.module.css'))
+  assert.ok(style.textContent.includes('.hostInputBar_primary'))
+  upstream.textContent = upstream.textContent.replaceAll('hostInputBar', 'differentHash')
+  const observer = module.__observers.find(o => o.observed === dom.document.head)
+  observer.fire()
+  assert.ok(style.textContent.includes('.differentHash_primary'))
+  assert.ok(!style.textContent.includes('.hostInputBar_primary'))
+  upstream.textContent = ''
+  observer.fire()
+  assert.ok(!style.textContent.includes('.differentHash_primary'))
+  upstream.textContent = '.late_primary{color:red}'
+  observer.fire()
+  assert.ok(style.textContent.includes('.late_primary'))
+  for (const { disposer } of ctx._effects) disposer()
+  assert.equal(style.parentNode, null)
+  assert.equal(dom.col.hasAttribute('data-dsh-mobile-sidebar-col'), false)
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), null)
+})
+
+test('rightbar replaces the left drawer history step and preserves app state', () => {
+  const dom = makeDom(), win = makeWin()
+  win.history.pushState({ appRoute: 'conversation' })
+  const module = loadModule({ document: dom.document, window: win, matchMedia: () => makeMediaQuery(true) })
+  let closes = 0
+  module.apply(makeCtx(makeTheme(), {
+    toggleSidebar() {},
+    closeRightbar() { throw new Error('layout geometry must not be used to close content') },
+    sidebarRight: {
+      isExpanded() { return dom.document.rightbarOpen },
+      toggleExpanded() { closes++; dom.document.rightbarOpen = false }
+    }
+  }))
+  const observer = findAttrObserver(module.__observers, dom.frame)
+  observer.fire()
+  dom.frame.attrs['data-sidebar-collapsed'] = true
+  // A zero track is normal even while the phone's fullscreen preview is open.
+  dom.frame.attrs['data-rightbar-collapsed'] = true
+  dom.document.rightbarOpen = true
+  observer.fire()
+  assert.equal(win.history.stack.length, 2)
+  assert.equal(win.history.state.dshMobileTheme, 'rightbar')
+  assert.equal(win.history.state.appRoute, 'conversation')
+  win.history.back()
+  assert.equal(closes, 1)
+  assert.equal(win.history.stack.length, 1)
+})
+
+test('UI close does not consume a foreign history entry above the drawer', () => {
+  const dom = makeDom(), win = makeWin()
+  const module = loadModule({ document: dom.document, window: win, matchMedia: () => makeMediaQuery(true) })
+  module.apply(makeCtx(makeTheme(), { toggleSidebar() {} }))
+  const observer = findAttrObserver(module.__observers, dom.frame)
+  observer.fire()
+  win.history.pushState({ foreign: true })
+  dom.frame.attrs['data-sidebar-collapsed'] = true
+  observer.fire()
+  assert.equal(win.history.stack.length, 2)
+  assert.equal(win.history.state.foreign, true)
+})
+
+test('Lexical contenteditable focus is guarded but real composer taps remain allowed', () => {
+  const dom = makeDom()
+  const module = loadModule({ document: dom.document, matchMedia: () => makeMediaQuery(true) })
+  module.apply(makeCtx(makeTheme(), { toggleSidebar() {} }))
+  let blurs = 0
+  const input = { tagName: 'DIV', isContentEditable: true, matches: s => s.includes('[data-composer-input]'), blur() { blurs++ } }
+  dom.centerCol.contains = el => el === input
+  const fire = type => { for (const l of dom.listeners.filter(l => l.type === type)) l.fn({ target: input }) }
+  fire('focusin')
+  assert.equal(blurs, 1)
+  fire('pointerdown')
+  fire('focusin')
+  assert.equal(blurs, 1)
+})
+
+test('keyboard inset supports Lexical, ignores zoom, and preserves reading position', () => {
+  const dom = makeDom(), win = makeWin(), mq = makeMediaQuery(true)
+  const module = loadModule({ document: dom.document, window: win, matchMedia: () => mq })
+  const ctx = makeCtx(makeTheme(), { toggleSidebar() {} })
+  module.apply(ctx)
+  dom.document.activeElement = { tagName: 'DIV', isContentEditable: true }
+  dom.scroller.clientHeight = 400
+  win.visualViewport.set(0, 500)
+  assert.equal(dom.rootStyle.props['--dsh-mobile-keyboard-inset'], '300px')
+  assert.equal(dom.scroller.scrollTop, 0, 'older messages stay in view')
+  win.visualViewport.scale = 2
+  win.visualViewport.set(0, 300)
+  assert.equal(dom.rootStyle.props['--dsh-mobile-keyboard-inset'], undefined)
+  for (const { disposer } of ctx._effects) disposer()
+})
+
+test('an open modal owns Escape before either drawer', () => {
+  const dom = makeDom()
+  const query = dom.document.querySelector.bind(dom.document)
+  dom.document.querySelector = s => s === '[aria-modal="true"], [role="menu"]' ? {} : query(s)
+  let closes = 0
+  const module = loadModule({ document: dom.document, matchMedia: () => makeMediaQuery(true) })
+  module.apply(makeCtx(makeTheme(), { toggleSidebar() { closes++ } }))
+  for (const l of dom.listeners.filter(l => l.type === 'keydown')) l.fn({ key: 'Escape' })
+  assert.equal(closes, 0)
+})
+
+test('a replaced or unsupported shell drops old structural marks', () => {
+  const dom = makeDom()
+  const module = loadModule({ document: dom.document, matchMedia: () => makeMediaQuery(true) })
+  module.apply(makeCtx(makeTheme(), { toggleSidebar() {} }))
+  const observer = module.__observers.find(o => o.observed === dom.body)
+  dom.frame.style.gridTemplateColumns = ''
+  observer.fire()
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), 'degraded')
+  assert.equal(dom.col.hasAttribute('data-dsh-mobile-sidebar-col'), false)
+  dom.frame.style.gridTemplateColumns = '56px minmax(0px, 1fr) 0px'
+  observer.fire()
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), 'ok')
+})
 
 test('apply injects the stylesheet exactly once and upgrades the viewport meta', () => {
   const dom = makeDom()
@@ -281,7 +416,7 @@ test('apply injects the stylesheet exactly once and upgrades the viewport meta',
   assert.ok(content.startsWith('width=device-width'), 'existing viewport directives preserved')
 
   // Version marker: lets a user confirm which bundle is live.
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.7')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).version)
 
   // Second apply (HMR re-activation) must not duplicate the style tag.
   module.apply(ctx)
@@ -390,7 +525,7 @@ test('closes the expanded drawer on backdrop click, inside tap, and Escape', asy
   assert.equal(toggles, 4, 'stray outside target closes the drawer')
 
   // Inside the drawer: only navigation rows close it (whitelist).
-  const sessionRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('YDXeBa_sessionRow') ? sessionRow : null) }
+  const sessionRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('hostRows_sessionRow') ? sessionRow : null) }
   dom.slot.contains = (n) => n === dom.slot || n === sessionRow
   tap(sessionRow)
   assert.equal(toggles, 4, 'session row tap is deferred past React handling')
@@ -536,7 +671,7 @@ test('Android back gesture: push on open, pop closes, UI close consumes', () => 
   let detailsCloses = 0
   const layout = {
     toggleSidebar() { sidebarToggles += 1 },
-    closeDetails() { detailsCloses += 1 }
+    sidebarRight: { isExpanded() { return dom.document.rightbarOpen }, toggleExpanded() { detailsCloses += 1; dom.document.rightbarOpen = false } }
   }
   module.apply(makeCtx(theme, layout))
 
@@ -569,12 +704,12 @@ test('Android back gesture: push on open, pop closes, UI close consumes', () => 
   assert.equal(sidebarToggles, 1, 'consume does not double-toggle')
 
   // Details drawer: push on open, pop closes it.
-  dom.frame.attrs['data-details-collapsed'] = true
+  dom.document.rightbarOpen = false
   observer.fire()
-  delete dom.frame.attrs['data-details-collapsed']
+  dom.document.rightbarOpen = true
   observer.fire()
   assert.equal(win.history.stack.length, 1, 'details open pushes one entry')
-  assert.equal(win.history.stack[0].dshMobileTheme, 'details')
+  assert.equal(win.history.stack[0].dshMobileTheme, 'rightbar')
 
   backGesture()
   assert.equal(detailsCloses, 1, 'back gesture closes the details drawer')
@@ -645,7 +780,7 @@ test('marks the shell columns with plugin-owned attributes (no hash pinning)', (
   assert.equal(dom.frame.getAttribute('data-dsh-mobile-frame'), '', 'frame marked')
   assert.equal(dom.col.getAttribute('data-dsh-mobile-sidebar-col'), '', 'sidebar col marked')
   assert.equal(dom.centerCol.getAttribute('data-dsh-mobile-center-col'), '', 'center col marked')
-  assert.equal(dom.detailsCol.getAttribute('data-dsh-mobile-details-col'), '', 'details col marked')
+  assert.equal(dom.detailsCol.getAttribute('data-dsh-mobile-rightbar-col'), '', 'details col marked')
   assert.equal(dom.body.getAttribute('data-dsh-mobile-layout'), 'ok', 'layout health marker')
 })
 
@@ -753,7 +888,7 @@ test('apply failures are contained (the entry never dies)', () => {
   assert.doesNotThrow(() => module.apply(makeCtx({ runtime: badRuntime }, { toggleSidebar() {} })))
   // The steps before the failure point still applied: css + version marker.
   assert.ok(dom.styleTags.some((t) => t.dataset.plugin === 'dsh-mobile-theme'), 'css injected before the failure')
-  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), '0.4.7', 'version marker written')
+  assert.equal(dom.body.getAttribute('data-dsh-mobile-theme'), JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).version, 'version marker written')
 })
 
 test('inside taps follow the navigation whitelist', async () => {
@@ -767,9 +902,9 @@ test('inside taps follow the navigation whitelist', async () => {
     for (const l of dom.listeners.filter((l) => l.type === 'pointerup')) l.fn({ target })
   }
 
-  const sessionRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('YDXeBa_sessionRow') ? sessionRow : null) }
-  const resultRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('YDXeBa_searchResultRow') ? resultRow : null) }
-  const newSession = { tagName: 'BUTTON', closest: (sel) => (sel.includes('hHd-Xa_newSession') ? newSession : null) }
+  const sessionRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('hostRows_sessionRow') ? sessionRow : null) }
+  const resultRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('hostRows_searchResultRow') ? resultRow : null) }
+  const newSession = { tagName: 'BUTTON', closest: (sel) => (sel.includes('hostSidebarRoot_newSession') ? newSession : null) }
   const gear = { tagName: 'BUTTON', closest: () => null } // settings trigger
   const searchBox = { tagName: 'INPUT', closest: () => null }
   dom.slot.contains = (n) => [dom.slot, sessionRow, resultRow, newSession, gear, searchBox].includes(n)
@@ -824,7 +959,7 @@ test('outside taps are ignored while an official overlay is open', async () => {
   assert.equal(toggles, 1, 'mask tap dismisses once the overlay is gone')
 
   // The deferred navigation-row close respects an open overlay too.
-  const sessionRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('YDXeBa_sessionRow') ? sessionRow : null) }
+  const sessionRow = { tagName: 'BUTTON', closest: (sel) => (sel.includes('hostRows_sessionRow') ? sessionRow : null) }
   dom.slot.contains = (n) => n === dom.slot || n === sessionRow
   modalOpen = true
   tap(sessionRow)
@@ -856,12 +991,12 @@ test('tap-to-reveal for message time labels (touch hover equivalent)', async () 
 
   const item = {
     tagName: 'DIV',
-    className: 'Md3f7G_flowItem',
+    className: 'data-chat-flow-key',
     attrs: {},
     setAttribute(k, v) { this.attrs[k] = v },
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null },
     removeAttribute(k) { delete this.attrs[k] },
-    closest(sel) { return sel.includes('Md3f7G_flowItem') ? this : null }
+    closest(sel) { return sel.includes('data-chat-flow-key') ? this : null }
   }
   dom.markedEls.push(item)
 
@@ -883,7 +1018,7 @@ test('tap-to-reveal for message time labels (touch hover equivalent)', async () 
   // Action buttons keep their own behavior — no toggle.
   const actionBtn = {
     tagName: 'BUTTON',
-    closest(sel) { return sel.includes('p-xYUq_actions') ? this : null }
+    closest(sel) { return sel.includes('hostMessageIconActions_actions') ? this : null }
   }
   fireClick(actionBtn)
   assert.equal(item.getAttribute('data-dsh-mobile-times'), null, 'action-button taps do not reveal')
@@ -894,12 +1029,12 @@ test('tap-to-reveal for message time labels (touch hover equivalent)', async () 
   assert.equal(item.getAttribute('data-dsh-mobile-times'), '1')
   const userRow = {
     tagName: 'DIV',
-    className: 'gdEzaW_userRow',
+    className: 'hostMessageItem_userRow',
     attrs: {},
     setAttribute(k, v) { this.attrs[k] = v },
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null },
     removeAttribute(k) { delete this.attrs[k] },
-    closest(sel) { return sel.includes('gdEzaW_userRow') ? this : null }
+    closest(sel) { return sel.includes('hostMessageItem_userRow') ? this : null }
   }
   fireClick(userRow)
   assert.equal(userRow.getAttribute('data-dsh-mobile-times'), null, 'user rows never get the reveal mark')

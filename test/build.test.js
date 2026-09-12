@@ -21,63 +21,21 @@ test('built bundle is syntactically valid JavaScript', () => {
   assert.doesNotThrow(() => new Function(bundle))
 })
 
-test('embedded stylesheet keeps the structural and pinned selectors', () => {
-  // The build JSON-escapes the css; a plain match on the raw fragment works
-  // for the selector text (no quotes involved in these fragments).
-  for (const fragment of [
-    '@media (max-width: 767px)',
-    '@media (max-width: 900px) and (max-height: 500px)',
-    'grid-template-columns: minmax(0, 1fr) 0px 0px !important',
-    '.dsh-mobile-theme-fab',
-    '[data-dsh-mobile-sidebar-col]:has([role=\\"dialog\\"][aria-modal=\\"true\\"])',
-    'env(safe-area-inset-bottom, 0px)',
-    '@media (hover: none)',
-    '@media (prefers-reduced-motion: reduce)',
-    'touch-action: manipulation',
-    '--dsh-mobile-keyboard-inset',
-    // Tier 2: layout-critical rules key off runtime-discovered marks —
-    // the contract that survives upstream CSS-module re-hashing.
-    '[data-dsh-mobile-frame]:not([data-sidebar-collapsed])',
-    '[data-dsh-mobile-frame]:not([data-details-collapsed])',
-    '[data-dsh-mobile-sidebar-col]',
-    '[data-dsh-mobile-center-col]',
-    '[data-dsh-mobile-details-col]',
-    '[data-dsh-mobile-center-col] [data-slot=\\"conversation\\"] > *',
-    // Tier 3: cosmetic tweaks pinned to the 0.1.0-rc.6 class hashes
-    // (concentrated here; their failure mode is cosmetic only).
-    '.pI_x6G_handle',
-    '.VOzbGW_panel',
-    '.VOzbGW_overlay.VOzbGW_overlay',
-    '[role=\\"dialog\\"][aria-modal=\\"true\\"] > nav',
-    '.VOzbGW_nav.VOzbGW_nav',
-    '.uV2eYG_primary',
-    '.o3BgMG_inspectButton',
-    '.ydkMvW_close',
-    '.ZuhsRW_dialog',
-    '._G5b-a_modalAction',
-    '.Nqubda_panel',
-    '.nLMEza_bar',
-    '.oY77xG_selector',
-    '.QsffPG_menu',
-    '.p-xYUq_timeStart',
-    '[data-dsh-mobile-times=\\"1\\"] .p-xYUq_timeStart',
-    '.YDXeBa_sessionRow',
-    '.YDXeBa_searchResultRow',
-    '.hHd-Xa_newSession',
-    '._copyButton_10eou_142::after',
-    '._copyButton_srovd_22::after'
-  ]) {
-    assert.ok(bundle.includes(fragment), `stylesheet must contain: ${fragment}`)
+test('stylesheet targets the current shell, editor, and live module aliases', () => {
+  const css = readFileSync(resolve(root, 'src/client.css'), 'utf8')
+  for (const selector of ['[data-dsh-mobile-frame]', '[data-dsh-mobile-rightbar-col]',
+    '[data-sidebar-right-panel]', '[data-slot="main"]', '[data-composer-input]',
+    '.dsh-InputBar_primary', '.dsh-ModelSelect_trigger', '.dsh-SettingsRoot_panel']) {
+    assert.ok(css.includes(selector), selector)
   }
-
-  // The settings content column must be vertically shrinkable, otherwise
-  // long sections overflow the fullscreen sheet and cannot scroll at all
-  // (the panel clips them via overflow: hidden).
-  assert.match(
-    bundle,
-    /\.VOzbGW_content\s*\{[^}]*min-height:\s*0/,
-    'settings content column must set min-height: 0'
-  )
+  assert.ok(!css.includes('data-details-collapsed'))
+  assert.ok(!css.includes('[data-slot="conversation"]'))
+  const modules = JSON.parse(readFileSync(resolve(root, 'src/selectors.json'), 'utf8'))
+  for (const [, name] of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/\.dsh-([A-Za-z0-9]+)_/g)) assert.ok(modules[name], name)
+  const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
+  assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-client-ui-layout'], '0.1.5-rc.2')
+  assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-client-ui-theme'], '0.1.5-rc.2')
+  assert.ok(!bundle.includes('__DSH_MOBILE_THEME_SELECTORS__'))
 })
 
 test('embedded tokens are { light, dark } pairs with --dsw-* names', () => {

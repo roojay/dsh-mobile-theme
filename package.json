@@ -1,7 +1,7 @@
 {
   "name": "dsh-mobile-theme",
-  "version": "0.4.7",
-  "description": "Mobile-adaptation theme plugin for the DeepSeek Harness Web surface: phone layout (overlay sidebar/details drawers, touch-size controls, safe-area insets, fullscreen settings) plus an automatic viewport theme layer stacked through the official theme registry",
+  "version": "0.5.0",
+  "description": "Mobile-adaptation theme plugin for the DeepSeek Harness Web surface: phone layout (overlay sidebar and fullscreen right preview, touch-size controls, safe-area insets, fullscreen settings) plus an automatic viewport theme layer stacked through the official theme registry",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -18,13 +18,16 @@
     "README.md",
     "README.zh.md",
     "LICENSE",
-    "REGRESSION.md"
+    "REGRESSION.md",
+    "COMPATIBILITY.md"
   ],
   "scripts": {
     "build": "node scripts/build-client.mjs",
     "prepack": "npm run build",
     "test": "npm run build && node --test test/*.test.js",
-    "deploy:hot": "npm run build && node scripts/deploy-hot.mjs"
+    "deploy:hot": "npm run build && node scripts/deploy-hot.mjs",
+    "check:upstream": "node scripts/check-upstream.mjs",
+    "test:browser": "node test/browser-smoke.mjs"
   },
   "keywords": [
     "dsh",
@@ -59,7 +62,7 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-ui-layout": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-theme": "0.1.2-rc.1"
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-ui-theme": "0.1.5-rc.2"
   }
 }

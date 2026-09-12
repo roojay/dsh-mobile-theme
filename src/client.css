@@ -7,10 +7,9 @@
  *            through the documented slot/`data-slot` structure. Survives
  *            CSS-module re-hashing; discovery failure leaves the rules
  *            inert (graceful desktop-mode degradation, never broken).
- *   Tier 3 — fine-grained cosmetic tweaks pin the hashed class names
- *            shipped by @deepseek-ai/dsh-* 0.1.0-rc.6 (concentrated in
- *            the "cosmetic" sections). Their failure mode is cosmetic
- *            only. The test suite keeps the contract explicit.
+ *   Tier 3 — .dsh-Module_local aliases resolve against each package's
+ *            live data-plugin-css stylesheet. Module/local renames disable
+ *            only the affected rules; hashes are never pinned.
  *
  * Color values are deliberately absent: every rule below consumes
  * --dsw-* tokens, so the layer stays correct under any active theme
@@ -43,7 +42,7 @@
   }
 
   /* ── shell frame: true full-width center, overlay drawers ──────────── */
-  /* Official 0.1.2 still reserves a 56px icon rail below 1024px. On phones
+  /* Official 0.1.5 still reserves a 56px icon rail below 1024px. On phones
      that rail steals conversation width; hide it and use a body-level ☰
      to open the overlay drawer. Settings stays in the drawer footer. */
   [data-dsh-mobile-frame] {
@@ -56,12 +55,13 @@
     grid-column: 1;
   }
 
-  [data-dsh-mobile-details-col] {
+  [data-dsh-mobile-rightbar-col] {
     grid-column: 2;
   }
 
   /* No column drag handles on touch input. */
-  .pI_x6G_handle {
+  [data-dsh-mobile-frame] > [data-side],
+  [data-width-handle] {
     display: none;
   }
 
@@ -115,73 +115,74 @@
     background: var(--dsw-alias-bg-mask-1);
   }
 
-  /* Details panel: right-side overlay drawer (kept below the sidebar's
-     z-40 and the ☰ button's z-45 so both stay reachable). */
-  [data-dsh-mobile-details-col] {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    height: 100%;
-    width: 420px;
-    width: min(92vw, 420px);
-    z-index: 35;
-    transform: translateX(100%);
-    transition: transform 0.24s var(--ds-ease-in-out);
+  /* The rightbar owns its expansion and fullscreen state. Leave its
+     containing column untransformed so position:fixed still uses the viewport. */
+  [data-dsh-mobile-rightbar-col] {
+    position: static;
+    min-width: 0;
   }
 
-  [data-dsh-mobile-frame]:not([data-details-collapsed]) [data-dsh-mobile-details-col] {
-    transform: none;
-    box-shadow: var(--dsw-shadow-lv3);
+  [data-dsh-mobile-rightbar-col] [data-sidebar-right-panel] {
+    position: fixed;
+    inset: 0;
+    width: 100% !important;
+    box-sizing: border-box;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    z-index: 40;
   }
 
-  /* Details drawer: touch-size header and close button. */
-  .ydkMvW_header {
-    min-height: 48px;
-    padding: 12px;
+  [data-sidebar-right-toggle],
+  [data-sidebar-right-mode] {
+    min-width: 40px;
+    min-height: 40px;
   }
 
-  .ydkMvW_close {
-    width: 36px;
-    height: 36px;
+  /* No navigation button over the fullscreen preview's tab strip. */
+  body:has([data-sidebar-right-panel][data-sidebar-right-open]) .dsh-mobile-theme-fab {
+    display: none !important;
+  }
+
+  body:has([role="dialog"][aria-modal="true"]) .dsh-mobile-theme-fab {
+    display: none !important;
   }
 
   /* ── conversation chrome ──────────────────────────────────────────── */
 
-  .wSkVaW_root {
+  .dsh-ConversationRoot_root {
     --dsh-composer-side-clearance: 12px;
   }
 
-  .wSkVaW_header {
+  .dsh-ConversationRoot_header {
     padding: 8px 12px 0;
   }
 
   /* Reserve the left slot for ☰. */
-  .wSkVaW_titleRow {
+  .dsh-ConversationRoot_titleRow {
     min-height: 40px;
     padding-left: 44px;
   }
 
-  .wSkVaW_titleCluster {
+  .dsh-ConversationRoot_titleCluster {
     gap: 6px;
   }
 
-  .wSkVaW_crumb {
+  .dsh-ConversationRoot_crumb {
     max-width: 120px;
   }
 
-  .wSkVaW_headerUtilities {
+  .dsh-ConversationRoot_headerUtilities {
     margin-left: 8px;
     max-width: 45%;
     overflow-x: auto;
     scrollbar-width: none;
   }
 
-  .wSkVaW_headerUtilities::-webkit-scrollbar {
+  .dsh-ConversationRoot_headerUtilities::-webkit-scrollbar {
     display: none;
   }
 
-  .wSkVaW_tabs {
+  .dsh-ConversationRoot_tabs {
     gap: 20px;
     margin-top: 4px;
     padding-left: 4px;
@@ -189,37 +190,34 @@
     scrollbar-width: none;
   }
 
-  .wSkVaW_tabs::-webkit-scrollbar {
+  .dsh-ConversationRoot_tabs::-webkit-scrollbar {
     display: none;
   }
 
-  .wSkVaW_tab {
+  .dsh-ConversationRoot_tab {
     min-height: 40px;
     white-space: nowrap;
   }
 
-  .Md3f7G_scroll {
+  .dsh-ChatView_scroll {
     padding: 12px;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: none;
   }
 
-  .gdEzaW_userStack {
+  .dsh-MessageItem_userStack {
     max-width: min(525px, 88%);
   }
 
   /* Message text stays selectable for native long-press copy. */
-  .gdEzaW_bubble,
-  .Sxvs8a_body {
+  .dsh-MessageItem_bubble,
+  .dsh-AssistantMarkdown_body {
     -webkit-user-select: text;
     user-select: text;
   }
 
-  .bqrRRG_root {
-    padding: 8px 12px 12px;
-  }
 
-  .wSkVaW_composerHero {
+  .dsh-ConversationRoot_composerHero {
     padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -231,56 +229,74 @@
      area's visible height shrinks by the keyboard band instead of its
      content: the seat and the to-bottom affordance stay glued to the
      new bottom, no blank band. Structural selector (Tier 2): no hash. */
-  [data-dsh-mobile-center-col] [data-slot="conversation"] > * {
+  [data-dsh-mobile-center-col] [data-slot="main"] [data-phase]:has([data-composer-seat]) {
     box-sizing: border-box;
     padding-bottom: var(--dsh-mobile-keyboard-inset, 0px);
   }
 
-  .uV2eYG_root {
+  .dsh-InputBar_root {
     padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
-  .uV2eYG_card {
+  .dsh-InputBar_card {
     border-radius: 18px;
   }
 
-  .uV2eYG_accessory {
+  .dsh-InputBar_accessory {
     padding: 10px 10px 0;
   }
 
-  .uV2eYG_attachments {
+  [data-slot="conversation.input.attachments"] {
+    min-width: 0;
     padding: 4px 10px 0;
   }
 
-  .uV2eYG_input,
-  .uV2eYG_mirror,
-  .uV2eYG_backdrop {
+  [data-composer-input] {
+    font-size: max(16px, var(--dsh-content-font-size, 16px));
     padding: 4px 8px 0 12px;
   }
+
+  .dsh-InputBar_placeholder { padding-left: 12px; }
+
+  .dsh-InputBar_trailing {
+    gap: 6px;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .dsh-ModelSelect_root { min-width: 0; }
+  .dsh-ModelSelect_trigger { max-width: 120px; min-width: 0; min-height: 36px; }
+  .dsh-ModelSelect_triggerLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dsh-PermissionSelect_trigger { min-height: 36px; }
+  .dsh-MessageFeedbackActions_action { width: 32px; height: 32px; }
+  .dsh-FeedbackDialog_dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .dsh-FeedbackDialog_chip { min-height: 36px; }
+  .dsh-FeedbackDialog_submit { min-height: 40px; }
 
   /* Single-line bottom bar: never wrap — the left tools group shrinks,
      the send button keeps its place. IMPORTANT: no overflow-x here — the
      permission-select popover (official Menu, inline absolute, side:top)
      anchors inside this strip, and a scroll container would clip it
      (overflow-x:auto also clips y, hiding the popover). */
-  .uV2eYG_row {
+  .dsh-InputBar_row {
     gap: 8px;
     padding: 2px 6px 8px;
     flex-wrap: nowrap;
   }
 
-  .uV2eYG_tools {
+  .dsh-InputBar_tools {
     gap: 8px;
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  .uV2eYG_modes {
-    gap: 8px;
-    flex: none;
+  .dsh-InputBar_modes {
+    gap: 4px;
+    flex: 0 1 auto;
+    min-width: 0;
   }
 
-  .uV2eYG_add {
+  .dsh-InputBar_add {
     width: 36px;
     height: 36px;
     flex: none;
@@ -288,80 +304,84 @@
 
   /* The select shrinks below its cap (native ellipsis) instead of
      forcing the row to overflow. */
-  .uV2eYG_select {
+  .dsh-InputBar_select {
     max-width: 120px;
     min-width: 0;
     height: 32px;
     flex: 0 1 auto;
   }
 
-  .uV2eYG_primary {
+  .dsh-InputBar_primary {
+    flex: none;
     width: 40px;
     height: 40px;
   }
 
   /* ── touch-size controls ──────────────────────────────────────────── */
 
-  .p-xYUq_action {
+  .dsh-MessageIconActions_action {
     width: 32px;
     height: 32px;
     padding: 7px;
   }
 
-  .hHd-Xa_iconButton {
+  .dsh-SidebarRoot_iconButton {
     width: 36px;
     height: 36px;
   }
 
-  .hHd-Xa_newSession {
+  .dsh-SidebarRoot_newSession {
     height: 44px;
   }
 
-  ._7yHdaG_header {
+  .dsh-QueueDock_header {
     height: 40px;
   }
 
-  ._7yHdaG_row {
+  .dsh-QueueDock_row {
     height: 40px;
   }
 
-  ._7yHdaG_action {
+  .dsh-QueueDock_action {
     width: 32px;
     height: 32px;
   }
 
   /* Goal bar: roomier bar and icon buttons. */
-  .nLMEza_bar {
+  .dsh-GoalBar_bar {
     height: 44px;
   }
 
-  .nLMEza_iconBtn {
+  .dsh-GoalBar_iconBtn {
     width: 36px;
     height: 36px;
   }
 
-  .nLMEza_objectiveInput {
+  .dsh-GoalBar_objectiveInput {
     height: 32px;
   }
 
   /* Permission rows: bigger selector pill. */
-  .oY77xG_selector {
+  .dsh-PermissionRow_selector {
     height: 40px;
     padding: 0 16px;
   }
 
+  .dsh-PermissionRow_row { flex-wrap: wrap; gap: 10px; }
+  .dsh-PermissionRow_rowText { flex-basis: 100%; padding-right: 0; }
+
   /* Jobs popover: touch-size trigger/rows; menu becomes a fixed sheet
      under the header instead of an anchored absolute popover. */
-  .QsffPG_trigger {
+  .dsh-JobListAction_trigger {
     min-height: 36px;
     padding: 4px 6px;
   }
 
-  .QsffPG_row {
+  .dsh-JobListAction_row {
     min-height: 40px;
   }
 
-  .QsffPG_menu {
+  .dsh-JobListAction_menu {
     position: fixed;
     top: 64px;
     left: 12px;
@@ -373,28 +393,29 @@
 
   /* ── directory picker ─────────────────────────────────────────────── */
 
-  .ZuhsRW_dialog.ZuhsRW_dialog {
+  .dsh-DirectoryBrowser_dialog.dsh-DirectoryBrowser_dialog {
     width: 100%;
     height: calc(100dvh - 16px);
     max-height: calc(100dvh - 16px);
     border-radius: 0;
   }
 
-  .ZuhsRW_content {
+  .dsh-DirectoryBrowser_content {
     padding: 12px 12px 12px 16px;
   }
 
-  .ZuhsRW_row {
+  .dsh-DirectoryBrowser_row {
     height: 40px;
   }
 
-  .ZuhsRW_millerRow,
-  .ZuhsRW_column {
+  .dsh-DirectoryBrowser_millerRow,
+  .dsh-DirectoryBrowser_column {
     -webkit-overflow-scrolling: touch;
   }
 
   /* Footer actions fill one shared row (single-line cancel/confirm). */
-  ._G5b-a_modalAction {
+  .dsh-DirectoryBrowser_footerAction,
+  .dsh-WorkspacePicker_modalAction {
     flex: 1;
     min-width: 96px;
     min-height: 40px;
@@ -402,7 +423,7 @@
 
   /* ── cordis panel popover: clear of the composer ──────────────────── */
 
-  .Nqubda_panel {
+  .dsh-CordisPanel_panel {
     left: 12px;
     right: 12px;
     width: auto;
@@ -413,11 +434,11 @@
 
   /* ── code/terminal scrolling: momentum + contained overscroll ──────── */
 
-  ._block_10eou_7,
-  .o3BgMG_bodyScroll,
-  .o3BgMG_ioSection,
-  .o3BgMG_codeBody,
-  .o3BgMG_terminalBody {
+  [data-chat-flow] pre,
+  .dsh-ToolRow_bodyScroll,
+  .dsh-ToolRow_ioSection,
+  .dsh-ToolRow_codeBody,
+  .dsh-ToolRow_terminalBody {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
   }
@@ -428,8 +449,7 @@
      the icon down out of line. Expand the hit area invisibly instead:
      the pseudo-element stretches the tappable region outward while the
      icon keeps its exact visual position. */
-  ._copyButton_10eou_142::after,
-  ._copyButton_srovd_22::after {
+  [data-chat-flow] button[class*="_copyButton_"]::after {
     content: "";
     position: absolute;
     inset: -7px;
@@ -441,7 +461,7 @@
      not a viewport-wide sheet. Official overlay is position:fixed; pin it
      to the sidebar column instead. Nav stays a horizontal strip. */
   [data-dsh-mobile-sidebar-col] [role="presentation"]:has(> [role="dialog"][aria-modal="true"]),
-  .VOzbGW_overlay.VOzbGW_overlay {
+  .dsh-SettingsRoot_overlay.dsh-SettingsRoot_overlay {
     position: absolute;
     inset: 0;
     align-items: stretch;
@@ -449,7 +469,7 @@
   }
 
   [role="dialog"][aria-modal="true"]:has(> nav),
-  .VOzbGW_panel.VOzbGW_panel {
+  .dsh-SettingsRoot_panel.dsh-SettingsRoot_panel {
     width: 100%;
     max-width: none;
     height: 100%;
@@ -464,14 +484,14 @@
      min-height: auto can refuse to shrink below the section content, the
      whole thing overflows, and the panel's overflow: hidden clips the
      tail with no scrollbar. Clamping it hands scrolling to the official
-     .VOzbGW_options (flex: 1; min-height: 0; overflow-y: auto). */
+     .dsh-SettingsRoot_options (flex: 1; min-height: 0; overflow-y: auto). */
   [role="dialog"][aria-modal="true"]:has(> nav) > :last-child,
-  .VOzbGW_content.VOzbGW_content {
+  .dsh-SettingsRoot_content.dsh-SettingsRoot_content {
     min-height: 0;
   }
 
   [role="dialog"][aria-modal="true"] > nav,
-  .VOzbGW_nav.VOzbGW_nav {
+  .dsh-SettingsRoot_nav.dsh-SettingsRoot_nav {
     flex: none;
     flex-direction: row;
     align-items: center;
@@ -486,19 +506,19 @@
   }
 
   [role="dialog"][aria-modal="true"] > nav::-webkit-scrollbar,
-  .VOzbGW_nav.VOzbGW_nav::-webkit-scrollbar {
+  .dsh-SettingsRoot_nav.dsh-SettingsRoot_nav::-webkit-scrollbar {
     display: none;
   }
 
   [role="dialog"][aria-modal="true"] > nav > :first-child,
-  .VOzbGW_navTitle.VOzbGW_navTitle {
+  .dsh-SettingsRoot_navTitle.dsh-SettingsRoot_navTitle {
     flex: none;
     padding: 0 8px 0 0;
     font-size: 14px;
   }
 
   [role="dialog"][aria-modal="true"] > nav > :last-child,
-  .VOzbGW_navList.VOzbGW_navList {
+  .dsh-SettingsRoot_navList.dsh-SettingsRoot_navList {
     display: flex;
     flex-direction: row;
     flex: 1;
@@ -507,29 +527,29 @@
   }
 
   [role="dialog"][aria-modal="true"] > nav button,
-  .VOzbGW_navCell.VOzbGW_navCell {
+  .dsh-SettingsRoot_navCell.dsh-SettingsRoot_navCell {
     flex: none;
     height: 40px;
   }
 
-  .VOzbGW_header.VOzbGW_header {
+  .dsh-SettingsRoot_header.dsh-SettingsRoot_header {
     height: auto;
     min-height: 54px;
     padding: 12px 12px 8px;
   }
 
-  .VOzbGW_options.VOzbGW_options {
+  .dsh-SettingsRoot_options.dsh-SettingsRoot_options {
     padding: 0 16px 16px;
   }
 
   /* '/' and '@' trigger menu: bound to the viewport, above the keyboard. */
-  ._3e4SsG_menu {
+  .dsh-MenuView_menu {
     left: 8px;
     max-width: calc(100vw - 24px);
     max-height: 55dvh;
   }
 
-  ._3e4SsG_item {
+  .dsh-MenuView_item {
     min-height: 44px;
   }
 }
@@ -537,50 +557,51 @@
 /* ── landscape phone band: compact vertical rhythm ─────────────────────── */
 
 @media (max-width: 900px) and (max-height: 500px) {
-  .wSkVaW_header {
+  .dsh-ConversationRoot_header {
     padding: 4px 12px 0;
   }
 
-  .wSkVaW_titleRow {
+  .dsh-ConversationRoot_titleRow {
     min-height: 32px;
   }
 
-  .wSkVaW_tabs {
+  .dsh-ConversationRoot_tabs {
     margin-top: 2px;
   }
 
-  .wSkVaW_tab {
+  .dsh-ConversationRoot_tab {
     min-height: 32px;
     padding-bottom: 6px;
   }
 
-  .wSkVaW_composerSeat {
+  .dsh-ConversationRoot_composerSeat {
     --dsh-composer-text-max-height: 120px;
   }
 
-  .Md3f7G_scroll {
+  .dsh-ChatView_scroll {
     padding: 8px 12px;
   }
 
-  .uV2eYG_root {
+  .dsh-InputBar_root {
     padding: 0 12px calc(6px + env(safe-area-inset-bottom, 0px));
   }
 
-  .uV2eYG_card {
+  .dsh-InputBar_card {
     border-radius: 14px;
   }
 
-  .uV2eYG_add {
+  .dsh-InputBar_add {
     width: 32px;
     height: 32px;
   }
 
-  .uV2eYG_primary {
+  .dsh-InputBar_primary {
+    flex: none;
     width: 36px;
     height: 36px;
   }
 
-  .wSkVaW_composerHero {
+  .dsh-ConversationRoot_composerHero {
     padding-bottom: 12px;
   }
 }
@@ -592,7 +613,7 @@
 }
 
 @media (max-width: 767px), (max-width: 900px) and (max-height: 500px) {
-  .dsh-mobile-theme-fab {
+  body[data-dsh-mobile-layout="ok"] .dsh-mobile-theme-fab {
     position: fixed;
     z-index: 60;
     top: calc(8px + env(safe-area-inset-top, 0px));
@@ -632,7 +653,7 @@
 @media (hover: none) {
   /* The tool-call inspect button is opacity-0 until hover on desktop;
      on touch it must be visible or it is unreachable. */
-  .o3BgMG_inspectButton {
+  .dsh-ToolRow_inspectButton {
     opacity: 1;
   }
 
@@ -641,13 +662,13 @@
      shown while the message item carries the reveal mark (written by the
      bundle for ~4s). Shown labels are capped + ellipsized — one line,
      never overflowing into the next message. */
-  .p-xYUq_timeStart,
-  .p-xYUq_timeEnd {
+  .dsh-MessageIconActions_timeStart,
+  .dsh-MessageIconActions_timeEnd {
     display: none;
   }
 
-  [data-dsh-mobile-times="1"] .p-xYUq_timeStart,
-  [data-dsh-mobile-times="1"] .p-xYUq_timeEnd {
+  [data-dsh-mobile-times="1"] .dsh-MessageIconActions_timeStart,
+  [data-dsh-mobile-times="1"] .dsh-MessageIconActions_timeEnd {
     /* block (not inline-flex): text-overflow only renders an ellipsis
        on block containers — inline-flex hard-clips the tail instead. */
     display: block;
@@ -660,11 +681,11 @@
     line-height: 20px;
   }
 
-  [data-dsh-mobile-times="1"] .p-xYUq_timeStart {
+  [data-dsh-mobile-times="1"] .dsh-MessageIconActions_timeStart {
     padding-right: 6px;
   }
 
-  [data-dsh-mobile-times="1"] .p-xYUq_timeEnd {
+  [data-dsh-mobile-times="1"] .dsh-MessageIconActions_timeEnd {
     padding-left: 6px;
   }
 
@@ -672,8 +693,8 @@
      truncated. (Later in the file than the reveal rules, and every
      reveal-rule property is explicitly cancelled here — max-width /
      overflow included — so the reveal mark can never clip the label.) */
-  .gdEzaW_userRow .p-xYUq_timeStart,
-  .gdEzaW_userRow .p-xYUq_timeEnd {
+  .dsh-MessageItem_userRow .dsh-MessageIconActions_timeStart,
+  .dsh-MessageItem_userRow .dsh-MessageIconActions_timeEnd {
     display: inline-flex;
     max-width: none;
     overflow: visible;
@@ -688,19 +709,20 @@
 /* official 1024px sidebar auto-collapse breakpoint (the rail stays).       */
 
 @media (min-width: 768px) and (max-width: 1023px) and (min-height: 501px) {
-  .wSkVaW_root {
+  .dsh-ConversationRoot_root {
     --dsh-composer-side-clearance: 12px;
   }
 
-  .Md3f7G_scroll {
+  .dsh-ChatView_scroll {
     padding: 14px 20px;
   }
 
-  .wSkVaW_tabs {
+  .dsh-ConversationRoot_tabs {
     gap: 24px;
   }
 
-  .uV2eYG_primary {
+  .dsh-InputBar_primary {
+    flex: none;
     width: 38px;
     height: 38px;
   }
@@ -710,7 +732,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   [data-dsh-mobile-sidebar-col],
-  [data-dsh-mobile-details-col],
+  [data-dsh-mobile-rightbar-col],
   .dsh-mobile-theme-fab {
     transition: none;
   }
